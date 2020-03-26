@@ -1,11 +1,14 @@
 import datetime as dat
+import frequency_analysis as fan
+import migliore_python as mig_py
 import numpy as np
 import os
 import pandas as pd
 import pickle
+import plot_results as plt_res
+
 from scipy import integrate as scin
 from scipy import optimize as spopt
-import sys
 from neuron import h
 from os.path import join
 
@@ -20,14 +23,6 @@ from bokeh.palettes import Category20b as paletteb
 from selenium import webdriver
 
 colrs = palette[20] + paletteb[20]
-
-import plot_results as plt_res
-
-module_path = os.getcwd() # os.path.abspath(os.path.join('../..'))
-if module_path not in sys.path:
-    sys.path.append(module_path)
-
-import migliore_python as mig_py
 
 mu = u'\u03BC'
 delta = u'\u0394'
@@ -162,22 +157,6 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
     s_rg = h.Vector().record(cell.rg_m1.nodes(cell.somatic[0])[0]._ref_concentration)
     s_rgbg = h.Vector().record(cell.rgbg_m1.nodes(cell.somatic[0])[0]._ref_concentration)
 
-    # s_r = h.Vector().record(cell.somatic[0](0.5)._ref_R_m1_kmb)
-    # s_rl = h.Vector().record(cell.somatic[0](0.5)._ref_RLA_m1_kmb)
-    # s_rlg = h.Vector().record(cell.somatic[0](0.5)._ref_RLGA_m1_kmb)
-    #
-    # s_g = h.Vector().record(cell.somatic[0](0.5)._ref_G_m1_kmb)
-    # s_gbg = h.Vector().record(cell.somatic[0](0.5)._ref_Gbg_m1_kmb)
-    # s_rg = h.Vector().record(cell.somatic[0](0.5)._ref_RG_m1_kmb)
-    # s_rgbg = h.Vector().record(cell.somatic[0](0.5)._ref_RGbg_m1_kmb)
-
-    # s_d1 = h.Vector().record(cell.dumb1.nodes(cell.somatic[0])[0]._ref_concentration)
-    # s_d2 = h.Vector().record(cell.dumb2.nodes(cell.somatic[0])[0]._ref_concentration)
-
-    # cyt_vals = np.zeros((t_steps.size, n_nodes))
-    # er_vals = np.zeros((t_steps.size, n_nodes))
-    # ip3_vals = np.zeros((t_steps.size, n_nodes))
-    # ip3r_open_vals = np.zeros((t_steps.size, n_nodes))
     print('Vectors created')
 
     cv_act = 1
@@ -203,17 +182,8 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
 
             h.CVode().re_init()
 
-        # cyt_vals[t_i, :] = cell.ca[cell.cyt].nodes.concentration
-        # er_vals[t_i, :] = cell.ca[cell.er].nodes.concentration
-        # ip3_vals[t_i, :] = cell.ip3.nodes.concentration
-        # ip3r_open_vals[t_i, :] = np.array(cell.ro_ip3r.nodes.concentration)
-
     res_dict = {'node names': node_locs,
                 'node distances': node_dists,
-                # 'ip3 vals': ip3_vals,
-                # 'cyt vals': cyt_vals,
-                # 'er vals': er_vals,
-                # 'ip3r open vals': ip3r_open_vals,
                 'soma v': np.array(s_v),
                 'apical0 v': np.array(a0_v),
                 'apical9 v': np.array(a9_v),
@@ -264,14 +234,12 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
                 'soma ip3k': np.array(s_ip3k),
                 'soma ip3k_2ca': np.array(s_ip3k_2ca),
                 'soma ip3k_2ca_ip3': np.array(s_ip3k_2ca_ip3),
-                # 'soma dumb1': np.array(s_d1),
-                # 'soma dumb2': np.array(s_d2),
                 't': np.array(t_vec),
                 }
     return res_dict
 
 
-def plot_ach_pulse(result_d, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
+def plot_ach_pulse(result_d, ach_times=[100, 150], t_ignore=0):
     ret_figs = []
 
     cyt_t_fig = bplt.figure(title='Cytosol Calcium vs Time')
@@ -2341,9 +2309,9 @@ def plot_spike_acc_test(result_d, ach_times=[0, 50], t_ignore=0, plot_inds=[]):
 
     ret_figs = []
 
-    ach_span_1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+    ach_span_v1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
                            line_dash='dashed', line_width=3)
-    ach_span_2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+    ach_span_v2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
                            line_dash='dashed', line_width=3)
 
     freq_fig = bplt.figure(title='Instantaneous Firing Rate')
@@ -2351,16 +2319,21 @@ def plot_spike_acc_test(result_d, ach_times=[0, 50], t_ignore=0, plot_inds=[]):
     freq_fig.yaxis.axis_label = 'IFR (Hz)'
     ret_figs.append(freq_fig)
     freq_fig.legend.location = 'bottom_right'
-    freq_fig.add_layout(ach_span_1)
-    freq_fig.add_layout(ach_span_2)
+    freq_fig.add_layout(ach_span_v1)
+    freq_fig.add_layout(ach_span_v2)
+
+    ach_span_a1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    ach_span_a2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
 
     acc_fig = bplt.figure(title='Spike Acceleration')
     acc_fig.xaxis.axis_label = 'time (msec)'
     acc_fig.yaxis.axis_label = 'acceleration (%)'
     acc_fig.legend.location = 'bottom_right'
     ret_figs.append(acc_fig)
-    acc_fig.add_layout(ach_span_1)
-    acc_fig.add_layout(ach_span_2)
+    acc_fig.add_layout(ach_span_a1)
+    acc_fig.add_layout(ach_span_a2)
 
     acc_ach_fig = bplt.figure(title='Peak Spike Acceleration vs [ACh]', x_axis_type='log')
     acc_ach_fig.xaxis.axis_label = '[ACh] ({}M)'.format(mu)
@@ -2372,26 +2345,41 @@ def plot_spike_acc_test(result_d, ach_times=[0, 50], t_ignore=0, plot_inds=[]):
     hault_ach_fig.yaxis.axis_label = '(seconds)'
     ret_figs.append(hault_ach_fig)
 
+    ach_span_ca1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    ach_span_ca2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+
     ca_fig = bplt.figure(title='Somatic Cytosol Calcium')
     ca_fig.xaxis.axis_label = 'time (msec)'
     ca_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
     ret_figs.append(ca_fig)
-    ca_fig.add_layout(ach_span_1)
-    ca_fig.add_layout(ach_span_2)
+    ca_fig.add_layout(ach_span_ca1)
+    ca_fig.add_layout(ach_span_ca2)
+
+    ach_span_er1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    ach_span_er2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
 
     er_fig = bplt.figure(title='Somatic Endoplasmic Reticulum Calcium')
     er_fig.xaxis.axis_label = 'time (msec)'
     er_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
     ret_figs.append(er_fig)
-    er_fig.add_layout(ach_span_1)
-    er_fig.add_layout(ach_span_2)
+    er_fig.add_layout(ach_span_er1)
+    er_fig.add_layout(ach_span_er2)
+
+    ach_span_ik1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    ach_span_ik2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
 
     ik_fig = bplt.figure(title='Potassium Currents')
     ik_fig.xaxis.axis_label = 'time (msec)'
     ik_fig.yaxis.axis_label = 'current density (mA/cm^2)'
     ret_figs.append(ik_fig)
-    ik_fig.add_layout(ach_span_1)
-    ik_fig.add_layout(ach_span_2)
+    ik_fig.add_layout(ach_span_ik1)
+    ik_fig.add_layout(ach_span_ik2)
 
     pca_fig = bplt.figure(title='Peak Cytosol Calcium vs ACh', x_axis_type='log')
     pca_fig.xaxis.axis_label = 'ACh ({}M)'.format(mu)
@@ -2409,6 +2397,9 @@ def plot_spike_acc_test(result_d, ach_times=[0, 50], t_ignore=0, plot_inds=[]):
     else:
         my_is = range(len(result_d['ach_levels']))
 
+    spans1 = []
+    spans2 = []
+
     for a_i in my_is:
         ach_conc = result_d['ach_levels'][a_i]
 
@@ -2423,8 +2414,13 @@ def plot_spike_acc_test(result_d, ach_times=[0, 50], t_ignore=0, plot_inds=[]):
         v_fig.legend.location = 'bottom_right'
 
         if ach_conc > 0.0:
-            v_fig.add_layout(ach_span_1)
-            v_fig.add_layout(ach_span_2)
+            spans1.append(bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                                    line_dash='dashed', line_width=3))
+            spans2.append(bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                                    line_dash='dashed', line_width=3))
+
+            v_fig.add_layout(spans1[-1])
+            v_fig.add_layout(spans2[-1])
 
         i_ig = np.squeeze(np.where(result_d['t'][a_i] > t_ignore))
         t_arr = np.array(result_d['t'][a_i][i_ig]) - t_ignore
@@ -2461,6 +2457,9 @@ def plot_spike_acc_test(result_d, ach_times=[0, 50], t_ignore=0, plot_inds=[]):
 
     ik_leg = bmod.Legend(items=ik_list, location='center')
     ik_fig.add_layout(ik_leg, 'right')
+
+    acc_opts = get_ach_curve_params(result_d['ach_levels'][1:], peak_acc)
+    print('Acceleration EC50: ', 10 ** acc_opts[1])
 
     acc_ach_fig.line(result_d['ach_levels'][1:], peak_acc, color=colrs[0], line_width=3)
     acc_ach_fig.circle(result_d['ach_levels'][1:], peak_acc, color=colrs[0], size=12)
@@ -2507,44 +2506,63 @@ def plot_ahp_adp_test(result_d, phasic_or_tonic, ach_times=[0, 50], t_ignore=0):
     print('Acetylcholine Values: ', result_d['ach_levels'][1:])
     dep_arr = np.array(dep_vals)
     print('Depolarization Values: ', dep_arr)
+    dep_opts = get_ach_curve_params(result_d['ach_levels'][1:], dep_arr)
+    print('Depolarization EC50: ', 10**dep_opts[1])
     hyp_arr = np.array(hyp_vals)
     print('Hyperpolarization Values: ', hyp_arr)
     peak_ca_vals = np.array(peak_ca_vals)
+    hyp_opts = get_ach_curve_params(result_d['ach_levels'][1:], hyp_arr, positive=False)
+    print('Hyperpolarization EC50: ', 10**hyp_opts[1])
 
     ret_figs = []
 
-    ach_span_1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+    ach_span_v1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
                            line_dash='dashed', line_width=3)
-    ach_span_2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+    ach_span_v2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
                            line_dash='dashed', line_width=3)
 
     v_fig = bplt.figure(title='Somatic Membrane Potential')
     v_fig.xaxis.axis_label = 'time (msec)'
     v_fig.yaxis.axis_label = 'potential (mV)'
     ret_figs.append(v_fig)
-    v_fig.add_layout(ach_span_1)
-    v_fig.add_layout(ach_span_2)
+    v_fig.add_layout(ach_span_v1)
+    v_fig.add_layout(ach_span_v2)
+
+    ach_span_ca1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                           line_dash='dashed', line_width=3)
+    ach_span_ca2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                           line_dash='dashed', line_width=3)
 
     ca_fig = bplt.figure(title='Cytosol Calcium')
     ca_fig.xaxis.axis_label = 'time (msec)'
     ca_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
     ret_figs.append(ca_fig)
-    ca_fig.add_layout(ach_span_1)
-    ca_fig.add_layout(ach_span_2)
+    ca_fig.add_layout(ach_span_ca1)
+    ca_fig.add_layout(ach_span_ca2)
+
+    ach_span_er1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                           line_dash='dashed', line_width=3)
+    ach_span_er2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                           line_dash='dashed', line_width=3)
 
     er_fig = bplt.figure(title='Endoplasmic Reticulum Calcium')
     er_fig.xaxis.axis_label = 'time (msec)'
     er_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
     ret_figs.append(er_fig)
-    er_fig.add_layout(ach_span_1)
-    er_fig.add_layout(ach_span_2)
+    er_fig.add_layout(ach_span_er1)
+    er_fig.add_layout(ach_span_er2)
+
+    ach_span_ik1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                           line_dash='dashed', line_width=3)
+    ach_span_ik2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                           line_dash='dashed', line_width=3)
 
     ik_fig = bplt.figure(title='Potassium Currents')
     ik_fig.xaxis.axis_label = 'time (msec)'
     ik_fig.yaxis.axis_label = 'current density (mA/cm^2)'
     ret_figs.append(ik_fig)
-    ik_fig.add_layout(ach_span_1)
-    ik_fig.add_layout(ach_span_2)
+    ik_fig.add_layout(ach_span_ik1)
+    ik_fig.add_layout(ach_span_ik2)
 
     dep_fig = bplt.figure(title='Depolarization/Hyperpolarization vs {} ACh'.format(phasic_or_tonic), x_axis_type='log')
     dep_fig.xaxis.axis_label = 'ACh ({}M)'.format(mu)
@@ -2606,14 +2624,31 @@ def plot_ahp_adp_test(result_d, phasic_or_tonic, ach_times=[0, 50], t_ignore=0):
     return ret_figs
 
 
-def sig_func(x, k, x0, y_max, y_min):
-    return y_max/(1.0 + np.exp(-k*(x - x0)))+y_min
+def sig_func(x, k, x0):
+    return 1.0/(1.0 + np.exp(-k*(x - x0)))
 
 
-def get_ach_curve_params(ach_levels, y_vals):
+def neg_sig_func(x, k, x0, y_max, y_min):
+    return -1.0/(1.0 + np.exp(-k*(x - x0)))
 
-    conc_log = np.log(ach_levels)
-    ach_opt, _ = spopt.curve_fit(sig_func, conc_log, ach_norm)
+
+def get_ach_curve_params(ach_levels, y_vals, positive=True):
+
+    conc_log = np.log10(ach_levels)
+
+    if positive:
+        val_shift = np.array(y_vals) - np.min(y_vals)
+        val_norm = val_shift/np.max(val_shift)
+
+        ach_opt, _ = spopt.curve_fit(sig_func, conc_log, val_norm)
+    else:
+        val_shift = np.array(y_vals) - np.max(y_vals)
+        val_norm = -val_shift / np.min(val_shift)
+
+        ach_opt, _ = spopt.curve_fit(neg_sig_func, conc_log, val_norm)
+
+    return ach_opt
+
 
 if __name__ == '__main__':
 
@@ -2629,15 +2664,15 @@ if __name__ == '__main__':
                 'ca_er_val': 175.0*0.001,
                 'apical calcium mult': 300.0,
                 'soma calcium mult': 360.0,
-                'soma kca mult': 5.5, # 4.5,
-                'apical kca mult': 5.5, # 4.5,
+                'soma kca mult': 5.5,
+                'apical kca mult': 5.5,
                 'soma im mult': 1.0,
                 'axon im mult': 1.0,
                 'ca_diff': 0.03,
                 'ip3_diff': 0.3,
                 'ip3_init': 0.000003,
-                'ip3k_total': 0.05,  # 0.007,
-                'ip5p_total': 0.01,  # 0.0002,
+                'ip3k_total': 0.05,
+                'ip5p_total': 0.01,
                 'ip3r count': 1e-3,
                 'cbd_total': 0.045,
                 'cbdh_KD': 0.000237,
@@ -2670,7 +2705,7 @@ if __name__ == '__main__':
                 }
 
     path_parts = os.getcwd().split('/')
-    home_i = path_parts.index('muscarinic_modulation')
+    home_i = path_parts.index('ca1_muscarinic_modulation')
     home_path = '/'.join(path_parts[:(home_i + 1)])
 
     res_dir = os.path.join(home_path,
@@ -2689,7 +2724,7 @@ if __name__ == '__main__':
     # 'epsp sweep': EPSP Amplitude vs Time of ACh Pulse
     # 'buffer test': Test Calcium Dynamics vs Presence of Intracellular Buffer
 
-    simulation_choice = 'tonic input resistance'
+    simulation_choice = 'phasic acceleration'
     save_figs = True
     save_result = True
     use_file_to_plot = True

@@ -35,10 +35,10 @@ from selenium import webdriver
 colrs = palette[20] + paletteb[20]
 
 import plot_results as plt_res
-
-module_path = os.getcwd() # os.path.abspath(os.path.join('../..'))
-if module_path not in sys.path:
-    sys.path.append(module_path)
+#
+# module_path = os.getcwd() # os.path.abspath(os.path.join('../..'))
+# if module_path not in sys.path:
+#     sys.path.append(module_path)
 
 import migliore_python as mig_py
 

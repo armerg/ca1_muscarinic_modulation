@@ -6,10 +6,7 @@ import bokeh.layouts as blay
 import bokeh.models as bmod
 import colorcet as cc
 import frequency_analysis as fa
-import plotly.graph_objs as go
-import adaptivekde as kde
 import numpy as np
-import simplify_utils as su
 
 
 mu = u'\u03BC'

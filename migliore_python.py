@@ -1934,4 +1934,4 @@ if __name__ == "__main__":
     #
     #     print('{0}: ranges from {1} {3}m to {2} {3}m from soma'.format(sec_name, d_0, d_1, mu))
 
-    # plt.show()
+    plt.show()
