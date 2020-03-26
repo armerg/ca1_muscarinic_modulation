@@ -1,0 +1,45 @@
+//{load_file("nrngui.hoc")}
+{load_file("stdrun.hoc")}
+{load_file("import3d.hoc")}
+
+begintemplate Cell
+public soma, axon, dend, apic         
+create soma[1], axon[1], dend[1], apic[1]
+public all, somatic, axonal, basal, apical 
+objref all, somatic, axonal, basal, apical
+proc init() {
+    all = new SectionList()
+    somatic = new SectionList()
+    axonal = new SectionList()
+    basal = new SectionList()
+    apical = new SectionList()
+}
+endtemplate Cell
+
+// $s1 swc morphology file name
+// on exit the return object is a Cell instance with
+// the morpology specified by the $s1 file
+obfunc mkcell_swc() { localobj import, morph, cell
+    cell = new Cell()
+    morph = new Import3d_SWC_read()
+    morph.input($s1)
+    import = new Import3d_GUI(morph, 0)
+    execute("forall delete_section()", cell)
+    import.instantiate(cell)
+    return cell
+}
+
+obfunc mkcell_asc() { localobj import, morph, cell
+    cell = new Cell()
+    morph = new Import3d_Neurolucida3()
+    morph.quiet = 1
+    morph.input($s1)
+    import = new Import3d_GUI(morph, 0)
+    execute("forall delete_section()", cell)
+    import.instantiate(cell)
+    return cell
+}
+
+//objref cell0, shape0
+//cell0 = mkcell("output0_updated.swc")
+//shape0 = new Shape(cell0.all)
