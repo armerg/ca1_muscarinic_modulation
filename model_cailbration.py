@@ -1,11 +1,8 @@
-import datetime as dat
 import numpy as np
-
 import os
 import pandas as pd
 import scipy as sp
 import scipy.stats as scat
-import sys
 
 print(os.getcwd())
 
@@ -20,14 +17,12 @@ from neuron import h
 from os.path import join
 from scipy import integrate as spint
 from scipy import optimize as spopt
-
 import matplotlib.pyplot as plt
-
 import bokeh.io as bkio
 import bokeh.layouts as blay
 import bokeh.models as bmod
 import bokeh.plotting as bplt
-import various_scripts.frequency_analysis as fan
+import frequency_analysis as fan
 from bokeh.palettes import Category20 as palette
 from bokeh.palettes import Category20b as paletteb
 from selenium import webdriver
@@ -35,12 +30,8 @@ from selenium import webdriver
 colrs = palette[20] + paletteb[20]
 
 import plot_results as plt_res
-#
-# module_path = os.getcwd() # os.path.abspath(os.path.join('../..'))
-# if module_path not in sys.path:
-#     sys.path.append(module_path)
 
-import migliore_python as mig_py
+import ca1_pyramidal as ca1p
 
 mu = u'\u03BC'
 delta = u'\u0394'
@@ -88,13 +79,12 @@ def run_recharge_simulation(param_dict, sim_dur=180000):
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
     t_steps = np.arange(0, sim_dur, 100)
 
-    cell = mig_py.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, True, param_dict)
 
     # Calreticulin Parameter Values
     total_car = param_dict['car_total']
     KD_car = param_dict['car_KD']
     car_kon = param_dict['car_kon']
-    car_koff = KD_car * car_kon
 
     carca_init = total_car * 0.001 / (KD_car + 0.01)
     car_init = total_car - carca_init
@@ -123,22 +113,6 @@ def run_recharge_simulation(param_dict, sim_dur=180000):
     cbdlca_arr = np.zeros(t_steps.shape)
     ogb1ca_arr = np.zeros(t_steps.shape)
 
-    # dyeca_arr = np.zeros(t_steps.shape)
-    #
-    # e1_arr = np.zeros(t_steps.shape)
-    # e1_2ca_arr = np.zeros(t_steps.shape)
-    # e1_2ca_p_arr = np.zeros(t_steps.shape)
-    # e2_2ca_p_arr = np.zeros(t_steps.shape)
-    # e2_p_arr = np.zeros(t_steps.shape)
-    # e2_arr = np.zeros(t_steps.shape)
-    #
-    # c1_arr = np.zeros(t_steps.shape)
-    # c2_arr = np.zeros(t_steps.shape)
-    # c3_arr = np.zeros(t_steps.shape)
-    # c4_arr = np.zeros(t_steps.shape)
-    # o5_arr = np.zeros(t_steps.shape)
-    # o6_arr = np.zeros(t_steps.shape)
-
     for t_i, t_step in enumerate(t_steps):
         h.continuerun(t_step)
 
@@ -154,38 +128,8 @@ def run_recharge_simulation(param_dict, sim_dur=180000):
         ogb1ca_arr[t_i] = cell.dyeca[cell.cyt].nodes(cell.somatic[0])(0.5)[0].concentration
 
         carca_arr[t_i] = cell.carca[cell.er].nodes(cell.somatic[0])(0.5)[0].concentration
-        # dyeca_arr[t_i] = dyeca.nodes(soma)(0.5)[0].concentration
-        #
-        # e1_arr[t_i] = e1_serca.nodes(soma)(0.5)[0].concentration
-        # e1_2ca_arr[t_i] = e1_2ca_serca.nodes(soma)(0.5)[0].concentration
-        # e1_2ca_p_arr[t_i] = e1_2ca_p_serca.nodes(soma)(0.5)[0].concentration
-        # e2_2ca_p_arr[t_i] = e2_2ca_p_serca.nodes(soma)(0.5)[0].concentration
-        # e2_p_arr[t_i] = e2_p_serca.nodes(soma)(0.5)[0].concentration
-        # e2_arr[t_i] = e2_serca.nodes(soma)(0.5)[0].concentration
-        #
-        # c1_arr[t_i] = c1_ip3r.nodes(soma)(0.5)[0].concentration
-        # c2_arr[t_i] = c2_ip3r.nodes(soma)(0.5)[0].concentration
-        # c3_arr[t_i] = c3_ip3r.nodes(soma)(0.5)[0].concentration
-        # c4_arr[t_i] = c4_ip3r.nodes(soma)(0.5)[0].concentration
-        # o5_arr[t_i] = o5_ip3r.nodes(soma)(0.5)[0].concentration
-        # o6_arr[t_i] = o6_ip3r.nodes(soma)(0.5)[0].concentration
 
     print('Final SERCA States')
-    # e1 = cell.e1_serca.nodes(cell.somatic[0])(0.5)[0].concentration
-    # e1_2ca = cell.e1_2ca_serca.nodes(cell.somatic[0])(0.5)[0].concentration
-    # e1_2ca_p = cell.e1_2ca_p_serca.nodes(cell.somatic[0])(0.5)[0].concentration
-    # e2_2ca_p = cell.e2_2ca_p_serca.nodes(cell.somatic[0])(0.5)[0].concentration
-    # e2_p = cell.e2_p_serca.nodes(cell.somatic[0])(0.5)[0].concentration
-    # e2 = cell.e2_serca.nodes(cell.somatic[0])(0.5)[0].concentration
-
-    # total = e1 + e1_2ca + e1_2ca_p + e2_2ca_p + e2_p + e2
-    #
-    # print('e1: {}'.format(e1/total))
-    # print('e1-2ca: {}'.format(e1_2ca / total))
-    # print('e1-2ca-p: {}'.format(e1_2ca_p / total))
-    # print('e2-2ca-p: {}'.format(e2_2ca_p / total))
-    # print('e2-p: {}'.format(e2_p / total))
-    # print('e2: {}'.format(e2 / total))
 
     result_d = {'t': t_steps,
                 'sec names': ['Soma', 'Proximal Apical Trunk', 'Distal Apical Trunk'],
@@ -234,11 +178,6 @@ def plot_recharge(result_d):
     ogb1_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
     ogb1_fig.line(t_steps, 1000.0 * result_d['ogb1ca'][:], line_width=3, color=colrs[0], legend='High')
 
-    # for l_i, loc_name in enumerate(result_d['sec names']):
-    #     if 'soma' in loc_name:
-    #         cyt_ca_fig.line(t_steps, 1000.0*result_d['cyt ca'][:, l_i], line_width=4, color='black', legend='model result')
-    #         er_ca_fig.line(t_steps, 1000.0*result_d['er ca'][:, l_i], line_width=4, color='black', legend='model result')
-
     for l_i, loc_name in enumerate(result_d['sec names']):
 
         cyt_ca_fig.line(t_steps, 1000.0*result_d['cyt ca'][:, l_i], line_width=4, color=colrs[l_i], legend=loc_name)
@@ -266,7 +205,7 @@ def run_current_injection(rxd_sim, param_dict={}, sim_dur=500, c_int=[50, 100], 
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = mig_py.MyCell(t_path, rxd_sim, param_dict)
+    cell = ca1p.MyCell(t_path, rxd_sim, param_dict)
 
     t_curr = h.IClamp(cell.somatic[0](0.5))
 
@@ -322,9 +261,6 @@ def run_current_injection(rxd_sim, param_dict={}, sim_dur=500, c_int=[50, 100], 
 
     h.tstop = sim_dur
     h.celsius = 34.0
-
-    # h.load_file('negative_init.hoc')
-    # h.init()
 
     h.stdinit()
 
@@ -388,7 +324,7 @@ def run_current_injection_series(rxd_sim, param_dict={}, sim_dur=500, pulse_time
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = mig_py.MyCell(t_path, rxd_sim, param_dict)
+    cell = ca1p.MyCell(t_path, rxd_sim, param_dict)
 
     t_curr = h.IClamp(cell.somatic[0](0.5))
 
@@ -601,7 +537,7 @@ def run_ip3_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = mig_py.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, True, param_dict)
 
     if current_dict['amp']:
         t_curr = h.IClamp(cell.somatic[0](0.5))
@@ -695,18 +631,9 @@ def run_ip3_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
             print('time: {0}, ip3 rate: {1}'.format(t_step, p_amps_f[p_i]))
 
             cell.ip3.nodes(cell.cyt).concentration = p_amps_f[p_i]
-
             cell.ip3.nodes(cell.apical[apical_trunk_inds[2]]).concentration = p_amps_high[p_i]
 
-            # ip3_f = p_amps_f[p_i]
-            # ip3_b = p_amps_b[p_i]
-            #
-            # cell.ip3_prod.b_rate = ip3_f
-            # cell.ip3_prod.b_rate = ip3_b
-
             h.CVode().re_init()
-
-            # cell.ip3.concentration = ip3_amp
 
         if im_inhib_dict['perc'] < 1.0:
             if t_step == im_inhib_dict['start']:
@@ -844,37 +771,6 @@ def plot_ip3_pulse(result_d, t_is=[0, -1]):
     v_fig.line(result_d['t'], result_d['apical9 v'], line_width=3, color=colrs[2], legend='apical[9](0.5)',
                line_dash='dashed')
 
-    # cal_fig = bplt.figure(title='Cytosol Calcium vs Location')
-    # cal_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
-    # ret_figs.append(cal_fig)
-    # er_fig = bplt.figure(title='ER Calcium vs Location')
-    # er_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
-    # ret_figs.append(er_fig)
-    # ip3_fig = bplt.figure(title='IP3 vs Location')
-    # ip3_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
-    # ret_figs.append(ip3_fig)
-    # ip3r_open_fig = bplt.figure(title='Open IP3R vs Location')
-    # ip3r_open_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
-    # ret_figs.append(ip3r_open_fig)
-    #
-    # for s_i, t_i in enumerate(t_is):
-    #     cal_fig.circle(result_d['node distances'], 1000.0*result_d['cyt vals'][t_i, :], size=20-s_i, color=colrs[s_i],
-    #                    legend='t={0} msec'.format(my_steps[t_i]))
-    #     cal_fig.line(result_d['node distances'], 1000.0 * result_d['cyt vals'][t_i, :], line_width=3,
-    #                  color=colrs[s_i])
-    #     er_fig.circle(result_d['node distances'], 1000.0*result_d['er vals'][t_i, :], size=20-s_i, color=colrs[s_i],
-    #                   legend='t={0} msec'.format(my_steps[t_i]))
-    #     er_fig.line(result_d['node distances'], 1000.0 * result_d['er vals'][t_i, :], line_width=3,
-    #                 color=colrs[s_i])
-    #     ip3_fig.circle(result_d['node distances'], 1000.0*result_d['ip3 vals'][t_i, :], size=20-s_i, color=colrs[s_i],
-    #                    legend='t={0} msec'.format(my_steps[t_i]))
-    #     ip3_fig.line(result_d['node distances'], 1000.0 * result_d['ip3 vals'][t_i, :], line_width=3,
-    #                  color=colrs[s_i])
-    #     ip3r_open_fig.circle(result_d['node distances'], 1e6*result_d['ip3r open vals'][t_i, :], size=20-s_i,
-    #                          color=colrs[s_i], legend='t={0} msec'.format(my_steps[t_i]))
-    #     ip3r_open_fig.line(result_d['node distances'], 1e6*result_d['ip3r open vals'][t_i, :],
-    #                        line_width=3, color=colrs[s_i])
-
     return ret_figs
 
 
@@ -895,7 +791,7 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001],
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = mig_py.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, True, param_dict)
 
     if current_dict['amp']:
         t_curr = h.IClamp(cell.somatic[0](0.5))
@@ -980,10 +876,6 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001],
     a0_ri = h.Vector().record(cell.ri_ip3r.nodes(cell.apical[0])[0]._ref_concentration)
     a9_ri = h.Vector().record(cell.ri_ip3r.nodes(cell.apical[9])[0]._ref_concentration)
 
-    # s_po = h.Vector().record(cell.ro_ip3r.nodes(cell.somatic[0])[0]._ref_concentration)
-    # a0_po = h.Vector().record(cell.ro_ip3r.nodes(cell.apical[0])[0]._ref_concentration)
-    # a9_po = h.Vector().record(cell.ro_ip3r.nodes(cell.apical[9])[0]._ref_concentration)
-
     s_po = h.Vector().record(cell.x10_ip3r.nodes(cell.somatic[0])[0]._ref_concentration)
     a0_po = h.Vector().record(cell.x10_ip3r.nodes(cell.apical[0])[0]._ref_concentration)
     a9_po = h.Vector().record(cell.x10_ip3r.nodes(cell.apical[9])[0]._ref_concentration)
@@ -1030,10 +922,6 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001],
 
     res_dict = {'node names': node_locs,
                 'node distances': node_dists,
-                # 'ip3 vals': ip3_vals,
-                # 'cyt vals': cyt_vals,
-                # 'er vals': er_vals,
-                # 'ip3r open vals': ip3r_open_vals,
                 'soma_v': np.array(s_v),
                 'apical0_v': np.array(a0_v),
                 'apical9_v': np.array(a9_v),
@@ -1086,8 +974,6 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001],
                 'soma_ip3k': np.array(s_ip3k),
                 'soma_ip3k_2ca': np.array(s_ip3k_2ca),
                 'soma_ip3k_2ca_ip3': np.array(s_ip3k_2ca_ip3),
-                # 'soma dumb1': np.array(s_d1),
-                # 'soma dumb2': np.array(s_d2),
                 't': np.array(t_vec),
                 }
     return res_dict
@@ -1203,10 +1089,6 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
         reg_label = bmod.glyphs.Text(x='x', y='y', text='text', text_color='green')
         acc_fig.add_glyph(lable_source, reg_label)
 
-    # dumb_fig = bplt.figure(title='Dummy Variables to Test Density/Concentration')
-    # dumb_fig.xaxis.axis_label = 'time ('msec)'
-    # ret_figs.append(dumb_fig)
-
     ach_spans = []
 
     for ach_time in ach_times:
@@ -1246,7 +1128,6 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
     act_plc_t_fig.line(t_ig, result_dict['soma_rlg'][t_bool], line_width=3, color=colrs[4], legend='RLG')
     act_plc_t_fig.line(t_ig, result_dict['soma_ga_gtp'][t_bool], line_width=3, color=colrs[0],
                        legend='ga-gtp')
-    # act_plc_t_fig.line(t_ig, result_d['soma plc'], line_width=3, color=colrs[1], legend='plc')
     act_plc_t_fig.line(t_ig, result_dict['soma_active_plc'][t_bool], line_width=3, color=colrs[2], legend='ga-gtp-plc')
 
     for ach_sp in ach_spans:
@@ -1254,12 +1135,6 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
 
     pip2_t_fig.line(t_ig, result_dict['soma_pip2'][t_bool], line_width=3, color=colrs[0], legend='Somatic PIP2')
     pip2_t_fig.line(t_ig, result_dict['soma_pip2_bound'][t_bool], line_width=3, color=colrs[5], legend='Somatic PIP2 bound')
-    # pip2_t_fig.line(t_ig, result_dict['apical0_pip2'], line_width=3, color=colrs[1], legend='Proximal Apical PIP2')
-    # pip2_t_fig.line(t_ig, result_dict['apical9_pip2'], line_width=3, color=colrs[2], legend='Distal Apical PIP2')
-    # pip2_t_fig.line(t_ig, result_dict['axon_pip2'], line_width=3, color=colrs[3], legend='Axonal PIP2',
-    #                 line_dash='dashed')
-    # pip2_t_fig.line(t_ig, result_dict['axon_pip2_bound'], line_width=3, color=colrs[6], legend='Axonal PIP2 bound',
-    #                 line_dash='dashed')
     pip2_t_fig.line(t_ig, result_dict['soma_pi4p'][t_bool], line_width=3, color=colrs[4], legend='somatic[0](0.5) PI4P')
 
     for ach_sp in ach_spans:
@@ -1292,16 +1167,11 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
 
     ip3r_open_t_fig.line(t_ig, 100*result_dict['soma_ip3r_open_probability'][t_bool], line_width=3, color='black',
                          legend='somatic[0]')
-    # ip3r_open_t_fig.line(t_ig, 100*result_dict['soma_ip3r_ri'], line_width=3, color='black',
-    #                      legend='somatic[0] ri', line_dash='dashed')
     ip3r_open_t_fig.line(t_ig, 100*result_dict['apical0_ip3r_open_probability'][t_bool], line_width=3, color=colrs[0],
                          legend='apical[0]')
-    # ip3r_open_t_fig.line(t_ig, 100 * result_dict['apical0_ip3r_ri'], line_width=3, color=colrs[0],
-    #                      legend='apical[0] ri', line_dash='dashed')
     ip3r_open_t_fig.line(t_ig, 100*result_dict['apical9_ip3r_open_probability'][t_bool], line_width=3, color=colrs[1],
                          legend='apical[9]')
-    # ip3r_open_t_fig.line(t_ig, 100 * result_dict['apical9_ip3r_ri'], line_width=3, color=colrs[1],
-    #                      legend='apical[9] ri', line_dash='dashed')
+
     for ach_sp in ach_spans:
         ip3r_open_t_fig.add_layout(ach_sp)
 
@@ -1323,7 +1193,6 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
         pip2_kcnq_t_fig.add_layout(ach_sp)
 
     ik_t_fig.line(t_ig, result_dict['soma_im'][t_bool], line_width=3, color='black', legend='Soma Im', line_dash='dashed')
-    # ik_t_fig.line(t_ig, result_d['axon im'][i_ig], line_width=3, color=colrs[2], legend='axonal[0]')
 
     ik_t_fig.line(t_ig, result_dict['apical9_isk'][t_bool], line_width=3, color=colrs[2],
                    legend='apical[9] Isk')
@@ -1334,51 +1203,9 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
         ik_t_fig.add_layout(ach_sp)
 
     v_fig.line(t_ig, result_dict['soma_v'][t_bool], line_width=3, color='black')
-    # v_fig.line(t_ig, result_d['apical0 v'][i_ig], line_width=3, color=colrs[0], legend='apical[0](0.5)',
-    #            line_dash='dashed')
-    # v_fig.line(t_ig, result_d['apical9 v'][i_ig], line_width=3, color=colrs[2], legend='apical[9](0.5)',
-    #            line_dash='dotted')
-    # v_fig.line(t_ig, result_d['axon v'][i_ig], line_width=3, color=colrs[3], legend='axonal[0](0.5)',
-    #            line_dash='dotted')
     for ach_sp in ach_spans:
         v_fig.add_layout(ach_sp)
     v_fig.legend.location = 'bottom_right'
-
-    # dumb_fig.line(result_d['t'], result_d['soma dumb1'], line_width=3, color=colrs[0], legend='density')
-    # dumb_fig.line(result_d['t'], result_d['soma dumb2'], line_width=3, color=colrs[2], legend='concentration')
-
-    # cal_fig = bplt.figure(title='Cytosol Calcium vs Location')
-    # cal_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
-    # ret_figs.append(cal_fig)
-    # er_fig = bplt.figure(title='ER Calcium vs Location')
-    # er_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
-    # ret_figs.append(er_fig)
-    # ip3_fig = bplt.figure(title='IP3 vs Location')
-    # ip3_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
-    # ret_figs.append(ip3_fig)
-    # ip3r_open_fig = bplt.figure(title='Open IP3R vs Location')
-    # ip3r_open_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
-    # ret_figs.append(ip3r_open_fig)
-    #
-    # for s_i, t_i in enumerate(t_is):
-    #     cal_fig.circle(result_d['node distances'], 1000.0 * result_d['cyt vals'][t_i, :], size=20 - s_i,
-    #                    color=colrs[s_i],
-    #                    legend='t={0} msec'.format(my_steps[t_i]))
-    #     cal_fig.line(result_d['node distances'], 1000.0 * result_d['cyt vals'][t_i, :], line_width=3,
-    #                  color=colrs[s_i])
-    #     er_fig.circle(result_d['node distances'], 1000.0 * result_d['er vals'][t_i, :], size=20 - s_i, color=colrs[s_i],
-    #                   legend='t={0} msec'.format(my_steps[t_i]))
-    #     er_fig.line(result_d['node distances'], 1000.0 * result_d['er vals'][t_i, :], line_width=3,
-    #                 color=colrs[s_i])
-    #     ip3_fig.circle(result_d['node distances'], 1000.0 * result_d['ip3 vals'][t_i, :], size=20 - s_i,
-    #                    color=colrs[s_i],
-    #                    legend='t={0} msec'.format(my_steps[t_i]))
-    #     ip3_fig.line(result_d['node distances'], 1000.0 * result_d['ip3 vals'][t_i, :], line_width=3,
-    #                  color=colrs[s_i])
-    #     ip3r_open_fig.circle(result_d['node distances'], 1e6 * result_d['ip3r open vals'][t_i, :], size=20 - s_i,
-    #                          color=colrs[s_i], legend='t={0} msec'.format(my_steps[t_i]))
-    #     ip3r_open_fig.line(result_d['node distances'], 1e6 * result_d['ip3r open vals'][t_i, :],
-    #                        line_width=3, color=colrs[s_i])
 
     return ret_figs
 
@@ -2013,12 +1840,6 @@ if __name__ == "__main__":
                      'ach_refill_test_open_ip3r_vs_t', 'ach_refill_test_ip3_breakdown_vs_t', 'ach_refill_test_perc_im_vs_t',
                      'ach_refill_test_ik_vs_t', 'ach_refill_test_v_vs_t']
 
-        # if len(ach_figs) > len(ach_names):
-        #     add_dasari_isr_data(ach_figs[-1])
-        #
-        #     ach_names.append('ach_pulse_ifr_vs_t')
-        #     ach_names.append('ach_pulse_spike_accel_vs_t')
-
         ach_names_dose = [a_name + '_refill_100uM_50msec_0p125Hz_ach_spikes' for a_name in ach_names]
 
         all_figs += ach_figs
@@ -2074,12 +1895,6 @@ if __name__ == "__main__":
                      'ach_refill_test_open_ip3r_vs_t', 'ach_refill_test_ip3_breakdown_vs_t', 'ach_refill_test_perc_im_vs_t',
                      'ach_refill_test_ik_vs_t', 'ach_refill_test_v_vs_t']
 
-        # if len(ach_figs) > len(ach_names):
-        #     add_dasari_isr_data(ach_figs[-1])
-        #
-        #     ach_names.append('ach_pulse_ifr_vs_t')
-        #     ach_names.append('ach_pulse_spike_accel_vs_t')
-
         ach_names_dose = [a_name + '_refill_100uM_50msec_0p125Hz_ach_resting' for a_name in ach_names]
 
         all_figs += ach_figs
@@ -2107,17 +1922,17 @@ if __name__ == "__main__":
 
     if save_figs:
 
-        driver_path = r'/usr/local/bin/geckodriver'
-        my_opts = webdriver.firefox.options.Options()
-        # my_opts.add_argument('start-maximized')
-        # my_opts.add_argument('disable-infobars')
-        my_opts.add_argument('--disable-extensions')
-        my_opts.add_argument('window-size=1200,1000')
-        my_opts.headless = True
-
-        my_driver = webdriver.Firefox(options=my_opts, executable_path=driver_path)
+        # driver_path = r'/usr/local/bin/geckodriver'
+        # my_opts = webdriver.firefox.options.Options()
+        # # my_opts.add_argument('start-maximized')
+        # # my_opts.add_argument('disable-infobars')
+        # my_opts.add_argument('--disable-extensions')
+        # my_opts.add_argument('window-size=1200,1000')
+        # my_opts.headless = True
+        #
+        # my_driver = webdriver.Firefox(options=my_opts, executable_path=driver_path)
 
         for fig, name in zip(all_figs, all_names):
             fig_path = os.path.join(res_dir, '{}.png'.format(name))
-            bkio.export_png(fig, filename=fig_path, webdriver=my_driver)
+            bkio.export_png(fig, filename=fig_path)  # , webdriver=my_driver)
 

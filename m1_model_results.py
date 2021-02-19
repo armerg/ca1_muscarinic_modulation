@@ -1,10 +1,8 @@
-import datetime as dat
 import frequency_analysis as fan
-import migliore_python as mig_py
+import ca1_pyramidal as ca1p
 import numpy as np
 import os
 import pandas as pd
-import pickle
 import plot_results as plt_res
 
 from scipy import integrate as scin
@@ -47,7 +45,7 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = mig_py.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, True, param_dict)
 
     if current_dict['amp']:
         t_curr = h.IClamp(cell.somatic[0](0.5))
@@ -99,14 +97,6 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
     ax_im = h.Vector().record(cell.axonal[0](0.5)._ref_ik_kmb_inh)
 
     s_ach = h.Vector().record(cell.ach.nodes(cell.somatic[0])[0]._ref_concentration)
-
-    # s_dag = h.Vector().record(cell.somatic[0](0.5)._ref_DAG_m1_kmb)
-    # s_pip2 = h.Vector().record(cell.somatic[0](0.5)._ref_PIP2_m1_kmb)
-    # s_pip2_kcnq = h.Vector().record(cell.somatic[0](0.5)._ref_PIP2_KCNQ_m1_kmb)
-    # s_ga_gtp = h.Vector().record(cell.somatic[0](0.5)._ref_Ga_GTP_m1_kmb)
-    # s_plc = h.Vector().record(cell.somatic[0](0.5)._ref_PLC_m1_kmb)
-    # s_active_plc = h.Vector().record(cell.somatic[0](0.5)._ref_Ga_GTP_PLC_m1_kmb)
-
     s_dag = h.Vector().record(cell.dag.nodes(cell.somatic[0])[0]._ref_concentration)
 
     s_pip2 = h.Vector().record(cell.pip2.nodes(cell.somatic[0])[0]._ref_concentration)
@@ -132,7 +122,6 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
     a0_ca_er = h.Vector().record(cell.ca[cell.er].nodes(cell.apical[0])[0]._ref_concentration)
     a9_ca_er = h.Vector().record(cell.ca[cell.er].nodes(cell.apical[9])[0]._ref_concentration)
     s_ip3 = h.Vector().record(cell.ip3.nodes(cell.somatic[0])[0]._ref_concentration)
-    # s_ip3 = h.Vector().record(cell.somatic[0](0.5)._ref_IP3i)
     a0_ip3 = h.Vector().record(cell.ip3.nodes(cell.apical[0])[0]._ref_concentration)
     a9_ip3 = h.Vector().record(cell.ip3.nodes(cell.apical[9])[0]._ref_concentration)
     s_ri = h.Vector().record(cell.ri_ip3r.nodes(cell.somatic[0])[0]._ref_concentration)
@@ -321,10 +310,6 @@ def plot_ach_pulse(result_d, ach_times=[100, 150], t_ignore=0):
         isr_fig.circle(isr_ts[isr_is] - t_ignore, isr_vals[isr_is], size=12, color=colrs[0], legend='Simulation Result')
         isr_fig.line(isr_ts[isr_is] - t_ignore, isr_vals[isr_is], line_width=3, color=colrs[0])
 
-    # dumb_fig = bplt.figure(title='Dumby Variables to Test Density/Concentration')
-    # dumb_fig.xaxis.axis_label = 'time (msec)'
-    # ret_figs.append(dumb_fig)
-
     ach_span_1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
                            line_dash='dashed', line_width=3)
     ach_span_2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
@@ -471,7 +456,7 @@ def run_ahp_test(param_dict={}, ach_levels=[0.0, 100.0], run_time=2000,
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = mig_py.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, True, param_dict)
 
     if current_dict['amp']:
         t_curr = h.IClamp(cell.somatic[0](0.5))
@@ -861,7 +846,7 @@ def run_buffer_comparison(param_dict, calbindin_concs, ach_times, ach_concs=[100
     """
     morph_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = mig_py.MyCell(morph_path, True, param_dict)
+    cell = ca1p.MyCell(morph_path, True, param_dict)
 
     s_v_vec = h.Vector().record(cell.somatic[0](0.5)._ref_v)
     ca_cyt_vec = h.Vector().record(cell.ca[cell.cyt].nodes(cell.somatic[0])[0]._ref_concentration)
@@ -1038,7 +1023,7 @@ def run_calcium_wave(param_dict, time_values, ach_times, ach_conc, run_time=3000
     all_t_vals = np.sort(np.array(time_values + ach_times))
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
-    cell = mig_py.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, True, param_dict)
 
     line_dict = get_line_segs_calcium(cell)
 
@@ -1300,7 +1285,7 @@ def run_tonic_test(param_dict={}, ach_levels=[0.0, 100.0], run_time=2000, ach_ti
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = mig_py.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, True, param_dict)
 
     if current_dict['amp']:
         t_curr = h.IClamp(cell.somatic[0](0.5))
@@ -1395,7 +1380,7 @@ def run_input_resistance_test(param_dict, ach_times, ach_levels=[0.0, 100.0], ru
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = mig_py.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, True, param_dict)
 
     t_curr = h.IClamp(cell.somatic[0](0.5))
     t_curr.delay = current_dict['start']
@@ -1512,10 +1497,11 @@ def plot_input_resistance_test(result_d, curr_times, ach_times, t_ignore=0):
 
     ret_figs = []
 
-    ach_span_1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
-                           line_dash='dashed', line_width=3)
-    ach_span_2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
-                           line_dash='dashed', line_width=3)
+    spans1 = []
+    spans2 = []
+
+    ispans1 = []
+    ispans2 = []
 
     for a_i, ach_conc in enumerate(result_d['ach_levels']):
 
@@ -1524,15 +1510,24 @@ def plot_input_resistance_test(result_d, curr_times, ach_times, t_ignore=0):
         v_fig.yaxis.axis_label = 'potential (mV)'
         ret_figs.append(v_fig)
 
-        v_fig.add_layout(ach_span_1)
-        v_fig.add_layout(ach_span_2)
+        spans1.append(bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                           line_dash='dashed', line_width=3))
+        spans2.append(bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                           line_dash='dashed', line_width=3))
+        v_fig.add_layout(spans1[-1])
+        v_fig.add_layout(spans2[-1])
 
         i_fig = bplt.figure(title='Currents vs Time, ACh={0:.3f} {1}M'.format(ach_conc, mu))
         i_fig.xaxis.axis_label = 'time (msec)'
         i_fig.yaxis.axis_label = 'current (mA/cm^2)'
         ret_figs.append(i_fig)
-        i_fig.add_layout(ach_span_1)
-        i_fig.add_layout(ach_span_2)
+
+        ispans1.append(bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                           line_dash='dashed', line_width=3))
+        ispans2.append(bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                           line_dash='dashed', line_width=3))
+        i_fig.add_layout(ispans1[-1])
+        i_fig.add_layout(ispans2[-1])
 
         for c_i, c_amp in enumerate(result_d['current_amplitudes']):
             v_fig.line(result_d['t'][a_i][c_i], result_d['soma_v_dict'][a_i][c_i], color=colrs[c_i],
@@ -1565,6 +1560,9 @@ def plot_input_resistance_test(result_d, curr_times, ach_times, t_ignore=0):
     rin_fig.xaxis.axis_label = 'Acetylcholine Concentration ({}M)'.format(mu)
     rin_fig.yaxis.axis_label = 'Input Resistance (M{})'.format(ohm)
     ret_figs.append(rin_fig)
+
+    inp_opts = get_ach_curve_params(result_d['ach_levels'][1:], slopes[1:], positive=False)
+    print('Input Resistance EC50: ', 10 ** inp_opts[1])
 
     rin_fig.line(result_d['ach_levels'][1:], slopes[1:], color=colrs[0], line_width=3)
     rin_fig.circle(result_d['ach_levels'][1:], slopes[1:], color=colrs[0], size=12)
@@ -2007,7 +2005,7 @@ def run_rheobase_test(param_dict, ach_times, ach_levels=[0.0, 100.0], run_time=2
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = mig_py.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, True, param_dict)
 
     t_curr = h.IClamp(cell.somatic[0](0.5))
     t_curr.delay = current_dict['start']
@@ -2260,6 +2258,9 @@ def plot_rheobase_test(result_d, ach_times, curr_times, t_ignore=0):
     thresh_fig = bplt.figure(title='Action Potential Rheobase vs [ACh]', x_axis_type='log')
     thresh_fig.xaxis.axis_label = '[ACh] ({}M)'.format(mu)
     thresh_fig.yaxis.axis_label = 'rheobase (nA)'
+
+    rheo_opts = get_ach_curve_params(result_d['ach_levels'][1:], result_d['rheobase_values'][1:], positive=False)
+    print('Rheobase EC50: ', 10 ** rheo_opts[1])
 
     ret_figs.append(thresh_fig)
 
@@ -2720,14 +2721,12 @@ if __name__ == '__main__':
     # 'tonic acceleration': Tonic ACh Spike Acceleration
     # 'tonic input resistance': Tonic Input Resistance
     # 'tonic rheobase': Tonic ACh rheobase
-    # 'epsp modulation': EPSP Modulation
-    # 'epsp sweep': EPSP Amplitude vs Time of ACh Pulse
-    # 'buffer test': Test Calcium Dynamics vs Presence of Intracellular Buffer
+    # 'calcium wave': plots a series of images that show the calcium concentrations in each section at given time steps
 
     simulation_choice = 'phasic acceleration'
     save_figs = True
     save_result = True
-    use_file_to_plot = True
+    use_file_to_plot = False
 
     if simulation_choice == 'ahp test':
         #############
@@ -2919,6 +2918,7 @@ if __name__ == '__main__':
         v_plot_inds = [0,1,3,5,7,9,11]
         h5_path = os.path.join(res_dir, 'phasic_acceleration.h5')
         sim_dur = 10500
+        time_ignore = 500
         c_dict = {'amp': 0.525, 'start': 0.0, 'dur': sim_dur}
 
         ach_levs = [0.0] + list(ach_levs)
@@ -2957,8 +2957,8 @@ if __name__ == '__main__':
 
                 print('Results saved to {}'.format(h5_path))
 
-            acc_figs = plot_spike_acc_test(acc_dict, ach_times=[1500, 1550], t_ignore=500,
-                                           plot_inds=[0, 1, 3, 5, 7, 9, 11])
+            acc_figs = plot_spike_acc_test(acc_dict, ach_times=[1500, 1550], t_ignore=time_ignore,
+                                           plot_inds=v_plot_inds)
         else:
             with pd.HDFStore(h5_path) as h5file:
 
@@ -2992,7 +2992,7 @@ if __name__ == '__main__':
                         ai = int(k.split('_')[-1])
                         acc_dict['t'][ai] = np.array(h5file[k])
 
-                acc_figs = plot_spike_acc_test(acc_dict, ach_times=[1500, 1550], t_ignore=500,
+                acc_figs = plot_spike_acc_test(acc_dict, ach_times=[1500, 1550], t_ignore=time_ignore,
                                                plot_inds=v_plot_inds)
         acc_names = ['phasic_accel_test_ifr', 'phasic_accel_test_accel',
                      'phasic_accel_test_accel_vs_ach', 'phasic_accel_test_cessation_vs_ach', 'phasic_accel_test_cyt',
@@ -3338,121 +3338,6 @@ if __name__ == '__main__':
         thresh_names += ['tonic_rheobase_test_rheobase_vs_ach']
         all_names += thresh_names
 
-    elif simulation_choice == 'epsp modulation':
-        ####################
-        ## EPSP modulation
-        ####################
-
-        ach_levs = np.logspace(-2, 2, 5)
-
-        sim_dur = 5200
-
-        ach_levels = [0.0] + list(ach_levs)
-
-        t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
-        dis_cell = mig_py.MyCell(t_path, True, my_dict_ach)
-
-        syn_locs = {}
-
-        for sec_list in [dis_cell.somatic, dis_cell.apical, dis_cell.basal]:
-            for sec in sec_list:
-                syn_locs[sec.name()] = [0.5,]
-
-        dv_dict = run_epsp_test(dis_cell, [100, sim_dur - 100], syn_locs,
-                                run_time=sim_dur,
-                                syn_delay=4000,
-                                ach_levels=ach_levels,
-                                synapse_dict={'amplitude': 0.00115, 'tau1': 0.1, 'tau2': 5.0, 'e': 0.0, 'delay': 1.0})
-
-        min_dv_dict = {}
-        min_dv_dict['min dV'] = dv_dict['min dV']
-        min_dv_dict['max dV'] = dv_dict['max dV']
-        min_dv_dict['ach levels'] = dv_dict['ach levels']
-        min_dv_dict['depolarization values'] = dv_dict['depolarization values']
-        min_dv_dict['soma v dict'] = {}
-        min_dv_dict['t'] = {}
-
-        for a_i, a_val in enumerate(ach_levels):
-            min_dv_dict['soma v dict'][a_i] = {}
-            min_dv_dict['t'][a_i] = {}
-            for sec_name in dv_dict['soma v dict'][a_i]:
-                if 'soma' in sec_name:
-                    min_dv_dict['soma v dict'][a_i][sec_name] = dv_dict['soma v dict'][a_i][sec_name]
-                    min_dv_dict['t'][a_i][sec_name] = dv_dict['t'][a_i][sec_name]
-
-        # my_dict = min_dv_dict
-        now = dat.datetime.now()
-        date_str = now.strftime('%Y_%m_%d')
-        file_name = 'dv_results_{}.p'.format(date_str)
-        print(file_name)
-
-        with open(file_name, 'wb') as p_obj:
-            pickle.dump(min_dv_dict, p_obj)
-
-        l_file = 'dv_results_2019_10_03.p'
-
-        with open(l_file, 'rb') as p_obj:
-            my_dict = pickle.load(p_obj)
-
-        line_dict = dis_cell.get_line_segs()
-        dv_plots = plot_epsp_test(my_dict, line_dict, ach_times=[100, sim_dur - 100])
-
-        all_figs += dv_plots
-
-        dv_names = []
-
-        for ach_level in ach_levels:
-            lev_str = str(ach_level).replace('.', 'p')
-            dv_names.append('dV_vs_location_{0}'.format(lev_str))
-
-        dv_names += ['dV_vs_ACh']
-        all_names += dv_names
-
-    elif simulation_choice == 'epsp sweep':
-        ########################################
-        # EPSP amplitude vs Time of ACh Pulse
-        ########################################
-
-        t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
-        dis_cell = mig_py.MyCell(t_path, True, my_dict_ach)
-
-        sim_dur = 5000
-        ach_level = 100
-        ach_times = [1200, 1250]
-        stim_times = [1000, 1250, 1400, 1700, 2200, 2700, 3200]
-
-        targ_sec = {'somatic[0]': [0.5]}
-
-        sw_dict = run_epsp_sweep(dis_cell, ach_times, stim_times, targ_sec, run_time=sim_dur,
-                                 synapse_dict={'amplitude': 0.00115, 'tau1': 0.1, 'tau2': 5.0, 'e': 0.0, 'delay': 1.0})
-        sweep_figs = plot_epsp_sweep(sw_dict, t_ignore=200)
-        all_figs += sweep_figs
-
-        sweep_names = ['epsp_sweep_soma_v', 'epsp_sweep_dv', 'epsp_sweep_perc']
-        all_names += sweep_names
-
-    elif simulation_choice == 'buffer test':
-        ##############################################################
-        # Test Calcium Dynamics vs Presence of Intracellular Buffer
-        ##############################################################
-
-        sim_dur = 5200
-        ach_levels = [100.0]  # (uM)
-        ach_times = [1200, 1250]
-
-        calbindin_concs = [0.0, 0.045, 0.090]  # (mM)
-
-        buff_dict = run_buffer_comparison(my_dict_ach, calbindin_concs, ach_times, ach_concs=ach_levels, run_time=sim_dur)
-        buff_figs = plot_buffer_comparison(buff_dict, t_ignore=200)
-        all_figs += buff_figs
-
-        b_names = ['buffer_comp_soma_v', 'buffer_comp_ca_cyt', 'buffer_comp_ca_er', 'buffer_comp_time2peak',
-                   'buffer_comp_integrated_ca_cyt_2sec']
-
-        for ach_conc in ach_levels:
-            buff_names = [b_str+'_ACh_{0}'.format(ach_conc) for b_str in b_names]
-            all_names += buff_names
-
     elif simulation_choice == 'calcium wave':
         # tl_dict = get_line_segs_calcium(my_dict_ach)
 
@@ -3495,7 +3380,7 @@ if __name__ == '__main__':
 
         t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-        cell = mig_py.MyCell(t_path, True, my_dict_ach)
+        cell = ca1p.MyCell(t_path, True, my_dict_ach)
 
         my_line_dict = cell.get_line_segs()
 
@@ -3528,17 +3413,17 @@ if __name__ == '__main__':
 
     if save_figs:
 
-        driver_path = r'/usr/local/bin/geckodriver'
-        my_opts = webdriver.firefox.options.Options()
-        # my_opts.add_argument('start-maximized')
-        # my_opts.add_argument('disable-infobars')
-        my_opts.add_argument('--disable-extensions')
-        my_opts.add_argument('window-size=1200,1000')
-        my_opts.headless = True
-
-        my_driver = webdriver.Firefox(options=my_opts, executable_path=driver_path)
+        # driver_path = r'/usr/local/bin/geckodriver'
+        # my_opts = webdriver.firefox.options.Options()
+        # # my_opts.add_argument('start-maximized')
+        # # my_opts.add_argument('disable-infobars')
+        # my_opts.add_argument('--disable-extensions')
+        # my_opts.add_argument('window-size=1200,1000')
+        # my_opts.headless = True
+        #
+        # my_driver = webdriver.Firefox(options=my_opts, executable_path=driver_path)
 
         for fig, name in zip(all_figs, all_names):
             fig_path = os.path.join(res_dir, '{}.png'.format(name))
-            bkio.export_png(fig, filename=fig_path, webdriver=my_driver)
+            bkio.export_png(fig, filename=fig_path)  # , webdriver=my_driver)
 

@@ -1,16 +1,7 @@
-import datetime as dat
 import numpy as np
 import os
-import pandas as pd
-import pickle
-import scipy as sp
-from scipy import integrate as scin
 import sys
 
-from mayavi import mlab
-
-from mpl_toolkits.mplot3d import Axes3D
-from itertools import cycle
 from neuron import h
 from os.path import join
 
@@ -21,7 +12,7 @@ import bokeh.layouts as blay
 import bokeh.models as bmod
 import bokeh.plotting as bplt
 import bokeh.palettes as bpal
-import various_scripts.frequency_analysis as fan
+import frequency_analysis as fan
 from bokeh.palettes import Category20 as palette
 from bokeh.palettes import Category20b as paletteb
 import colorcet as cc
@@ -31,11 +22,11 @@ colrs = palette[20] + paletteb[20]
 
 import plot_results as plt_res
 
-module_path = os.getcwd() # os.path.abspath(os.path.join('../..'))
+module_path = os.getcwd()  # os.path.abspath(os.path.join('../..'))
 if module_path not in sys.path:
     sys.path.append(module_path)
 
-import migliore_python as mig_py
+import ca1_pyramidal as ca1p
 
 mu = u'\u03BC'
 delta = u'\u0394'
@@ -106,7 +97,7 @@ def run_atype_test(param_dict={}, inhib_levels=[0.0, 1.0], run_time=300, current
     a_ika_vecs = []
 
     for i_i, i_val in enumerate(inhib_levels):
-        my_cells.append(mig_py.MyCell(t_path, True, param_dict))
+        my_cells.append(ca1p.MyCell(t_path, True, param_dict))
 
         for sec in my_cells[-1].apical:
             for seg in sec:

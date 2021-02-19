@@ -13,7 +13,7 @@ from bokeh.palettes import Category20 as palette
 from bokeh.palettes import Category20b as paletteb
 import plot_results as plt_res
 
-import various_scripts.frequency_analysis as fan
+import frequency_analysis as fan
 
 colrs = palette[20] + paletteb[20] + palette[20] + paletteb[20]
 
@@ -692,7 +692,7 @@ if __name__ == "__main__":
 
     # Get list of files to convert
     path_parts = os.getcwd().split('/')
-    home_i = path_parts.index('muscarinic_modulation')
+    home_i = path_parts.index('ca1_muscarinic_modulation')
     home_path = '/'.join(path_parts[:(home_i+1)])
 
     mouse_path = os.path.join(home_path,
