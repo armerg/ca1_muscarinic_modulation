@@ -1,12 +1,12 @@
+from neuron import rxd
+from neuron import h
+
 import numpy as np
 import matplotlib.pyplot as plt
 import os
 import re
 from mpl_toolkits.mplot3d import Axes3D
 from itertools import cycle
-from neuron import h, crxd as rxd
-from neuron.crxd import rxdmath as rxdm
-from os.path import join
 
 import bokeh.plotting as bplt
 from bokeh.palettes import Category20 as palette
@@ -882,8 +882,8 @@ class MyCell(object):
         soce_g = 0.0005
         er_cent_val = 0.1
         k = 0.015
-        soce_rate = soce_g * rxdm.log(1 + rxdm.exp(rxd.v - v_init)) * (rxdm.exp(-(self.ca - er_cent_val) / k)) / (
-                    1 + rxdm.exp(-(self.ca - er_cent_val) / k))
+        soce_rate = soce_g * rxd.rxdmath.log(1 + rxd.rxdmath.exp(rxd.v - v_init)) * (rxd.rxdmath.exp(-(self.ca - er_cent_val) / k)) / (
+                    1 + rxd.rxdmath.exp(-(self.ca - er_cent_val) / k))
         self.soce = rxd.Rate(self.ca, soce_rate, regions=[self.er])
 
         ##########################
@@ -1556,7 +1556,7 @@ def run_current_injection(targ_sec, rxd_sim, param_dict={}, sim_dur=500, c_int=[
         i_array = numpy array of values for the injected current\n
     """
 
-    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
+    t_path = os.path.join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
     cell = MyCell(t_path, rxd_sim, param_dict)
 
@@ -1652,7 +1652,7 @@ def test_input_resistance(target_secs, current_values, rxd_sim, param_dict={}, s
 
     peak_dp = np.zeros((len(current_values), len(target_secs)))
 
-    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
+    t_path = os.path.join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
     cell = MyCell(t_path, rxd_sim, param_dict)
 
@@ -1722,7 +1722,7 @@ def test_spike_frequency_vs_current(target_secs, current_values, rxd_sim, param_
 
     spike_c = np.zeros((len(current_values), len(target_secs)))
 
-    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
+    t_path = os.path.join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
     cell = MyCell(t_path, rxd_sim, param_dict)
 
@@ -1827,7 +1827,7 @@ def print_hoc_distance():
 
 if __name__ == "__main__":
     print(os.getcwd())
-    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
+    t_path = os.path.join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
     my_dict = {'frac_cyt': 0.9,
                    'frac_er': 0.1,

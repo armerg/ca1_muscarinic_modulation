@@ -3,18 +3,9 @@ import os
 import pandas as pd
 import scipy as sp
 import scipy.stats as scat
+import ca1_pyramidal as ca1p
 
-print(os.getcwd())
-
-c_dir = os.path.join(os.getcwd(), 'model_sources/migliore_etal_2018/MiglioreEtAl2018PLOSCompBiol2018')
-res_dir = os.path.join(os.getcwd(), 'results/Tuning Calcium Model/RXD')
-
-os.chdir(c_dir)
-
-from mpl_toolkits.mplot3d import Axes3D
-from itertools import cycle
 from neuron import h
-from os.path import join
 from scipy import integrate as spint
 from scipy import optimize as spopt
 import matplotlib.pyplot as plt
@@ -31,7 +22,7 @@ colrs = palette[20] + paletteb[20]
 
 import plot_results as plt_res
 
-import ca1_pyramidal as ca1p
+
 
 mu = u'\u03BC'
 delta = u'\u0394'
@@ -76,7 +67,7 @@ def estimate_decay_constant(t_vals, f_vals, change_tol=0.001):
 
 def run_recharge_simulation(param_dict, sim_dur=180000):
 
-    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
+    t_path = os.path.join(os.getcwd(), 'morphologies', 'mpg141209_A_idA.asc')
     t_steps = np.arange(0, sim_dur, 100)
 
     cell = ca1p.MyCell(t_path, True, param_dict)
@@ -203,7 +194,7 @@ def run_current_injection(rxd_sim, param_dict={}, sim_dur=500, c_int=[50, 100], 
         i_array = numpy array of values for the injected current\n
     """
 
-    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
+    t_path = os.path.join(os.getcwd(), 'morphologies', 'mpg141209_A_idA.asc')
 
     cell = ca1p.MyCell(t_path, rxd_sim, param_dict)
 
@@ -322,7 +313,7 @@ def run_current_injection(rxd_sim, param_dict={}, sim_dur=500, c_int=[50, 100], 
     
 def run_current_injection_series(rxd_sim, param_dict={}, sim_dur=500, pulse_times=[50], pulse_amps=[1.0], pulse_length=10):
 
-    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
+    t_path = os.path.join(os.getcwd(), 'morphologies', 'mpg141209_A_idA.asc')
 
     cell = ca1p.MyCell(t_path, rxd_sim, param_dict)
 
@@ -535,7 +526,7 @@ def run_ip3_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
     print('Pulse Times: {}'.format(p_times))
     print('Pulse Amps: {}'.format(p_amps_f))
 
-    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
+    t_path = os.path.join(os.getcwd(), 'morphologies', 'mpg141209_A_idA.asc')
 
     cell = ca1p.MyCell(t_path, True, param_dict)
 
@@ -789,7 +780,7 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001],
     print('Pulse Times: {}'.format(p_times))
     print('Pulse Amps: {}'.format(p_amps_f))
 
-    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
+    t_path = os.path.join(os.getcwd(), 'morphologies', 'mpg141209_A_idA.asc')
 
     cell = ca1p.MyCell(t_path, True, param_dict)
 
@@ -1439,6 +1430,13 @@ def plot_model_vs_gulledge(in_trace, bio_trace):
 if __name__ == "__main__":
 
     # Ensure directory exists for saving figures to
+    # c_dir = os.path.join(os.getcwd(), 'model_sources/migliore_etal_2018/MiglioreEtAl2018PLOSCompBiol2018')
+    res_dir = os.path.join(os.getcwd(), 'results', 'Tuning Calcium Model', 'RXD')
+
+    if not os.path.exists(res_dir):
+        os.makedirs(res_dir)
+
+    # os.chdir(c_dir)
 
     all_figs = []
     all_names = []
@@ -1469,7 +1467,7 @@ if __name__ == "__main__":
     # 'test_refill_resting': test repeated challenges with ACh while at resting membrane potential to see if recharge is
     #   sufficient to cause another inhibition
 
-    run_sim = 'test_refill_resting'
+    run_sim = 'single_ap'
     save_result = False
     use_file_to_plot = False
     save_figs = True

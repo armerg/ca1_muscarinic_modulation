@@ -2705,12 +2705,13 @@ if __name__ == '__main__':
                 'pi init': 226975.0,  # 226975
                 }
 
-    path_parts = os.getcwd().split('/')
-    home_i = path_parts.index('ca1_muscarinic_modulation')
-    home_path = '/'.join(path_parts[:(home_i + 1)])
+    home_path = os.getcwd()
 
-    res_dir = os.path.join(home_path,
-                           'results/M1 Model Results')
+    res_dir = os.path.join(home_path, 'results', 'M1 Model Results')
+
+    if not os.path.exists(res_dir):
+        os.makedirs(res_dir)
+
     res_h5file = os.path.join(os.path.join(res_dir, 'm1_model_simulations.h5'))
 
     # Simulation Options
