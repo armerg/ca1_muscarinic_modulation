@@ -1,0 +1,109 @@
+[ConfigCheck]# Verifies that all parameters entered make sense (Default = True)
+    checkWorks = True
+
+[File]
+    morph_name = mpg141208_B_idA
+
+[Ion_Channel]
+    [[Somatic]]
+        cm = 1.0
+        g_pas = 7.166e-5
+        ena = 50.0
+        ek = -90.0
+        Ra = 108.36
+        gkdrbar_kdr = 0.007289
+        gbar_nax = 0.06967
+        gbar_kmb_inh = 0.001964
+        gkabar_kap = 0.08868
+        gcanbar_can = 5.696e-6
+        gcalbar_cal = 1.221e-5
+        gcatbar_cat = 1.230e-6
+        gbar_kca = 5.500e-5
+        gbar_cagk = 1.623e-4
+        ghdbar_hd_min = 1.920e-5
+        e_pas_mult = -65.168
+        kca_mult = 5.5
+        calcium_mult = 360.0
+    [[Apical]]
+        cm = 1.0
+        g_pas =  7.166e-05
+        ena = 50.0
+        ek = -90.0
+        Ra = 108.36
+        gkdrbar_kdr = 0.007289
+        gbar_nax = 0.0697
+        gcalbar_cal = 1.22e-5
+        gcanbar_can = 5.696e-6
+        gcatbar_cat = 1.230e-6
+        gbar_kca = 5.500e-5
+        gbar_cagk = 1.623e-4
+        calcium_mult = 300.0
+        kca_mult = 5.5
+        ghdbar_hd_min = 1.920e-5
+        e_pas_mult = -65.168
+        gkabar_kad_mult = 0.01124
+    [[Basal]]
+        cm = 1.0
+        g_pas = 7.166e-5
+        ena = 50
+        ek = -90
+        Ra = 108.36
+        gkdrbar_kdr = 0.007289
+        gbar_nax = 0.06967
+        gcanbar_can = 5.696e-6
+        gcalbar_cal = 1.221e-5
+        gcatbar_cat = 1.230e-6
+        gbar_kca = 5.500e-5
+        gbar_cagk = 1.623e-4
+        ghdbar_hd_min = 1.920e-5
+        e_pas_mult = -65.168
+        gkabar_kad_mult = 0.01124
+    [[Axonal]]
+        cm = 1.0
+        g_pas = 1.795e-4
+        e_pas = -76.48
+        Ra = 73.61
+        ena = 50
+        ek = -90
+        gbar_nax = 0.1192
+        gkdrbar_kdr = 0.03965
+        gbar_kmb_inh = 0.02412
+        gkabar_kap = 0.1582
+
+[RXD]
+    trunk_sections = 0, 8, 9, 11, 13, 19
+    fraction_er = 0.1
+    fraction_cyt = 0.9
+    ca_ext_val = 2.0
+    ca_cyt_val = 1.0e-4
+    ca_er_val = 0.175
+    ca_diff = 0.03
+    ip3_diff = 0.3
+    ip3_init = 0.000003
+    ip3k_total = 0.05
+    ip5p_total = 0.01
+    cbd_total = 0.045
+    cam_total = 0.0  # 0.01
+    cbp_total = 0.0  # 0.8
+    car_total = 86.0
+    ogb1_total = 0.0
+    ogb5_total = 0.0
+    ncx_total = 0.0
+    pmca_total = 2.56e-5
+    g_ip3r = 7.5e5
+    g_er_leak = 2100.0
+    g_serca = 63525.0
+    g_ext_leak = 3.2e-5
+    m1_init = 79.35
+    g_init = 40.0
+    plc_init = 15.60
+    pip2_init = 3232.0
+    pi4p_init = 4540.0
+    pi_init = 226975.0
+
+[CA3toCA1]
+     cm = 1.0
+     g_pas =  7.166e-05
+     e_pas = -70.0
+     Ra = 108.36
+     gcatbar_cat = 0.0

@@ -1,9 +1,13 @@
+import datetime as dat
 import frequency_analysis as fan
 import ca1_pyramidal as ca1p
+import config_utils as conf
 import numpy as np
 import os
 import pandas as pd
+import pickle
 import plot_results as plt_res
+import time
 
 from scipy import integrate as scin
 from scipy import optimize as spopt
@@ -18,7 +22,7 @@ import bokeh.palettes as bpal
 
 from bokeh.palettes import Category20 as palette
 from bokeh.palettes import Category20b as paletteb
-from selenium import webdriver
+# from selenium import webdriver
 
 colrs = palette[20] + paletteb[20]
 
@@ -45,7 +49,8 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = ca1p.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, param_dict)
+    cell.insert_rxd()
 
     if current_dict['amp']:
         t_curr = h.IClamp(cell.somatic[0](0.5))
@@ -97,6 +102,14 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
     ax_im = h.Vector().record(cell.axonal[0](0.5)._ref_ik_kmb_inh)
 
     s_ach = h.Vector().record(cell.ach.nodes(cell.somatic[0])[0]._ref_concentration)
+
+    # s_dag = h.Vector().record(cell.somatic[0](0.5)._ref_DAG_m1_kmb)
+    # s_pip2 = h.Vector().record(cell.somatic[0](0.5)._ref_PIP2_m1_kmb)
+    # s_pip2_kcnq = h.Vector().record(cell.somatic[0](0.5)._ref_PIP2_KCNQ_m1_kmb)
+    # s_ga_gtp = h.Vector().record(cell.somatic[0](0.5)._ref_Ga_GTP_m1_kmb)
+    # s_plc = h.Vector().record(cell.somatic[0](0.5)._ref_PLC_m1_kmb)
+    # s_active_plc = h.Vector().record(cell.somatic[0](0.5)._ref_Ga_GTP_PLC_m1_kmb)
+
     s_dag = h.Vector().record(cell.dag.nodes(cell.somatic[0])[0]._ref_concentration)
 
     s_pip2 = h.Vector().record(cell.pip2.nodes(cell.somatic[0])[0]._ref_concentration)
@@ -122,6 +135,7 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
     a0_ca_er = h.Vector().record(cell.ca[cell.er].nodes(cell.apical[0])[0]._ref_concentration)
     a9_ca_er = h.Vector().record(cell.ca[cell.er].nodes(cell.apical[9])[0]._ref_concentration)
     s_ip3 = h.Vector().record(cell.ip3.nodes(cell.somatic[0])[0]._ref_concentration)
+    # s_ip3 = h.Vector().record(cell.somatic[0](0.5)._ref_IP3i)
     a0_ip3 = h.Vector().record(cell.ip3.nodes(cell.apical[0])[0]._ref_concentration)
     a9_ip3 = h.Vector().record(cell.ip3.nodes(cell.apical[9])[0]._ref_concentration)
     s_ri = h.Vector().record(cell.ri_ip3r.nodes(cell.somatic[0])[0]._ref_concentration)
@@ -310,6 +324,10 @@ def plot_ach_pulse(result_d, ach_times=[100, 150], t_ignore=0):
         isr_fig.circle(isr_ts[isr_is] - t_ignore, isr_vals[isr_is], size=12, color=colrs[0], legend='Simulation Result')
         isr_fig.line(isr_ts[isr_is] - t_ignore, isr_vals[isr_is], line_width=3, color=colrs[0])
 
+    # dumb_fig = bplt.figure(title='Dumby Variables to Test Density/Concentration')
+    # dumb_fig.xaxis.axis_label = 'time (msec)'
+    # ret_figs.append(dumb_fig)
+
     ach_span_1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
                            line_dash='dashed', line_width=3)
     ach_span_2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
@@ -456,7 +474,8 @@ def run_ahp_test(param_dict={}, ach_levels=[0.0, 100.0], run_time=2000,
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = ca1p.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, param_dict)
+    cell.insert_rxd()
 
     if current_dict['amp']:
         t_curr = h.IClamp(cell.somatic[0](0.5))
@@ -846,7 +865,8 @@ def run_buffer_comparison(param_dict, calbindin_concs, ach_times, ach_concs=[100
     """
     morph_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = ca1p.MyCell(morph_path, True, param_dict)
+    cell = ca1p.MyCell(morph_path, param_dict)
+    cell.insert_rxd()
 
     s_v_vec = h.Vector().record(cell.somatic[0](0.5)._ref_v)
     ca_cyt_vec = h.Vector().record(cell.ca[cell.cyt].nodes(cell.somatic[0])[0]._ref_concentration)
@@ -1023,7 +1043,8 @@ def run_calcium_wave(param_dict, time_values, ach_times, ach_conc, run_time=3000
     all_t_vals = np.sort(np.array(time_values + ach_times))
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
-    cell = ca1p.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, param_dict)
+    cell.insert_rxd()
 
     line_dict = get_line_segs_calcium(cell)
 
@@ -1285,7 +1306,8 @@ def run_tonic_test(param_dict={}, ach_levels=[0.0, 100.0], run_time=2000, ach_ti
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = ca1p.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, param_dict)
+    cell.insert_rxd()
 
     if current_dict['amp']:
         t_curr = h.IClamp(cell.somatic[0](0.5))
@@ -1380,7 +1402,8 @@ def run_input_resistance_test(param_dict, ach_times, ach_levels=[0.0, 100.0], ru
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = ca1p.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, param_dict)
+    cell.insert_rxd()
 
     t_curr = h.IClamp(cell.somatic[0](0.5))
     t_curr.delay = current_dict['start']
@@ -1561,8 +1584,8 @@ def plot_input_resistance_test(result_d, curr_times, ach_times, t_ignore=0):
     rin_fig.yaxis.axis_label = 'Input Resistance (M{})'.format(ohm)
     ret_figs.append(rin_fig)
 
-    inp_opts = get_ach_curve_params(result_d['ach_levels'][1:], slopes[1:], positive=False)
-    print('Input Resistance EC50: ', 10 ** inp_opts[1])
+    # inp_opts = get_ach_curve_params(result_d['ach_levels'][1:], slopes[1:], positive=False)
+    # print('Input Resistance EC50: ', 10 ** inp_opts[1])
 
     rin_fig.line(result_d['ach_levels'][1:], slopes[1:], color=colrs[0], line_width=3)
     rin_fig.circle(result_d['ach_levels'][1:], slopes[1:], color=colrs[0], size=12)
@@ -2005,7 +2028,8 @@ def run_rheobase_test(param_dict, ach_times, ach_levels=[0.0, 100.0], run_time=2
 
     t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = ca1p.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, param_dict)
+    cell.insert_rxd()
 
     t_curr = h.IClamp(cell.somatic[0](0.5))
     t_curr.delay = current_dict['start']
@@ -2341,7 +2365,7 @@ def plot_spike_acc_test(result_d, ach_times=[0, 50], t_ignore=0, plot_inds=[]):
     acc_ach_fig.yaxis.axis_label = 'acceleration (%)'
     ret_figs.append(acc_ach_fig)
 
-    hault_ach_fig = bplt.figure(title='Spike Cessation vs [ACh]', x_axis_type='log')
+    hault_ach_fig = bplt.figure(title='Duration of Spike Inhibition vs [ACh]', x_axis_type='log')
     hault_ach_fig.xaxis.axis_label = '[ACh] ({}M)'.format(mu)
     hault_ach_fig.yaxis.axis_label = '(seconds)'
     ret_figs.append(hault_ach_fig)
@@ -2401,7 +2425,10 @@ def plot_spike_acc_test(result_d, ach_times=[0, 50], t_ignore=0, plot_inds=[]):
     spans1 = []
     spans2 = []
 
-    for a_i in my_is:
+    dashes = ['solid', 'solid', 'dashed', 'dashed', 'dotted', 'dotted', 'dashdot', 'dashdot']
+    markers = ['circle', 'triangle', 'diamond', 'hex', 'inverted_triangle', 'square', 'asterisk']
+
+    for i_i, a_i in enumerate(my_is):
         ach_conc = result_d['ach_levels'][a_i]
 
         v_fig = bplt.figure(title='Somatic Membrane Potential, ACh = {0:.3f} {1}M'.format(ach_conc, mu))
@@ -2426,26 +2453,29 @@ def plot_spike_acc_test(result_d, ach_times=[0, 50], t_ignore=0, plot_inds=[]):
         i_ig = np.squeeze(np.where(result_d['t'][a_i] > t_ignore))
         t_arr = np.array(result_d['t'][a_i][i_ig]) - t_ignore
 
-        v_fig.line(t_arr, result_d['soma_v_dict'][a_i][i_ig], color='black', line_width=3)
+        v_fig.line(t_arr, result_d['soma_v_dict'][a_i][i_ig], color='black', line_width=1)
 
-        f_line = freq_fig.line(t_dict[a_i], ifr_dict[a_i], color=colrs[a_i], line_width=3)
-        freq_list.append(('{0:.3f} {1}M'.format(ach_conc, mu), [f_line]))
-        freq_fig.circle(t_dict[a_i], ifr_dict[a_i], color=colrs[a_i], size=12)
+        freq_fig.line(t_dict[a_i], ifr_dict[a_i], color=colrs[i_i], line_width=1)
+        f_scat = freq_fig.scatter(t_dict[a_i], ifr_dict[a_i], marker=markers[i_i], color=colrs[i_i], size=12, alpha=0.5)
+        freq_list.append(('{0:.3f} {1}M'.format(ach_conc, mu), [f_scat]))
 
-        cyt_line = ca_fig.line(t_arr, 1000.0*result_d['ca_cyt_dict'][a_i][i_ig], color=colrs[a_i], line_width=3)
+        cyt_line = ca_fig.line(t_arr, 1000.0*result_d['ca_cyt_dict'][a_i][i_ig], color=colrs[i_i], line_width=1,
+                               line_dash=dashes[i_i])
         cyt_list.append(('{0:.3f} {1}M'.format(ach_conc, mu), [cyt_line]))
-        er_line = er_fig.line(t_arr, 1000.0*result_d['ca_er_dict'][a_i][i_ig], color=colrs[a_i], line_width=3)
+
+        er_line = er_fig.line(t_arr, 1000.0*result_d['ca_er_dict'][a_i][i_ig], color=colrs[i_i], line_width=1,
+                               line_dash=dashes[i_i])
         er_list.append(('{0:.3f} {1}M'.format(ach_conc, mu), [er_line]))
 
-        ik_line = ik_fig.line(t_arr, result_d['soma_isk_dict'][a_i][i_ig], color=colrs[2*a_i], line_width=3)
+        ik_line = ik_fig.line(t_arr, result_d['soma_isk_dict'][a_i][i_ig], color=colrs[2*i_i], line_width=3)
         ik_list.append(('Isk {0:.3f} {1}M'.format(ach_conc, mu), [ik_line]))
-        ik_line2 = ik_fig.line(t_arr, result_d['soma_im_dict'][a_i][i_ig], color=colrs[2*a_i+1], line_width=3)
+        ik_line2 = ik_fig.line(t_arr, result_d['soma_im_dict'][a_i][i_ig], color=colrs[2*i_i+1], line_width=3)
         ik_list.append(('Im {0:.3f} {1}M'.format(ach_conc, mu), [ik_line2]))
 
         if a_i > 0.0:
-            acc_line = acc_fig.line(t_dict[a_i], acc_dict[a_i], color=colrs[a_i], line_width=3)
+            acc_line = acc_fig.line(t_dict[a_i], acc_dict[a_i], color=colrs[i_i], line_width=3, line_dash=dashes[i_i])
             acc_list.append(('ACh: {0:.3f} {1}M'.format(ach_conc, mu), [acc_line]))
-            acc_fig.circle(t_dict[a_i], acc_dict[a_i], color=colrs[a_i], size=12)
+            acc_fig.scatter(t_dict[a_i], acc_dict[a_i], color=colrs[i_i], marker=markers[i_i], size=12, alpha=0.5)
 
     f_leg = bmod.Legend(items=freq_list, location='center')
     freq_fig.add_layout(f_leg, 'right')
@@ -2459,23 +2489,25 @@ def plot_spike_acc_test(result_d, ach_times=[0, 50], t_ignore=0, plot_inds=[]):
     ik_leg = bmod.Legend(items=ik_list, location='center')
     ik_fig.add_layout(ik_leg, 'right')
 
-    acc_opts = get_ach_curve_params(result_d['ach_levels'][1:], peak_acc)
-    print('Acceleration EC50: ', 10 ** acc_opts[1])
+    # acc_opts = get_ach_curve_params(result_d['ach_levels'][1:], peak_acc)
+    # print('Acceleration EC50: ', 10 ** acc_opts[1])
 
-    acc_ach_fig.line(result_d['ach_levels'][1:], peak_acc, color=colrs[0], line_width=3)
-    acc_ach_fig.circle(result_d['ach_levels'][1:], peak_acc, color=colrs[0], size=12)
+    nz_inds = np.nonzero(result_d['ach_levels'])
+    ach_arr = np.array(result_d['ach_levels'])
+    acc_ach_fig.line(ach_arr[nz_inds], peak_acc, color=colrs[0], line_width=3)
+    acc_ach_fig.circle(ach_arr[nz_inds], peak_acc, color=colrs[0], size=12)
 
-    hault_ach_fig.line(result_d['ach_levels'][1:], max_hault, color=colrs[0], line_width=3)
-    hault_ach_fig.circle(result_d['ach_levels'][1:], max_hault, color=colrs[0], size=12)
+    hault_ach_fig.line(ach_arr[nz_inds], max_hault, color=colrs[0], line_width=3)
+    hault_ach_fig.circle(ach_arr[nz_inds], max_hault, color=colrs[0], size=12)
 
     peak_ca_vals = np.array(peak_ca_vals)
-    pca_fig.line(result_d['ach_levels'][1:], peak_ca_vals * 1000.0, line_width=3, color='green')
-    pca_fig.circle(result_d['ach_levels'][1:], peak_ca_vals * 1000.0, size=12, color='green')
+    pca_fig.line(ach_arr[nz_inds], peak_ca_vals * 1000.0, line_width=3, color='green')
+    pca_fig.circle(ach_arr[nz_inds], peak_ca_vals * 1000.0, size=12, color='green')
 
     return ret_figs
 
 
-def plot_ahp_adp_test(result_d, phasic_or_tonic, ach_times=[0, 50], t_ignore=0):
+def plot_ahp_adp_test(result_d, phasic_or_tonic, ach_times=[0, 50], t_ignore=0, plot_indices=[]):
 
     dep_vals = []
     hyp_vals = []
@@ -2507,20 +2539,22 @@ def plot_ahp_adp_test(result_d, phasic_or_tonic, ach_times=[0, 50], t_ignore=0):
     print('Acetylcholine Values: ', result_d['ach_levels'][1:])
     dep_arr = np.array(dep_vals)
     print('Depolarization Values: ', dep_arr)
-    dep_opts = get_ach_curve_params(result_d['ach_levels'][1:], dep_arr)
-    print('Depolarization EC50: ', 10**dep_opts[1])
+    if dep_arr.size > 3:
+        dep_opts = get_ach_curve_params(result_d['ach_levels'][1:], dep_arr)
+        print('Depolarization EC50: ', 10**dep_opts[1])
     hyp_arr = np.array(hyp_vals)
     print('Hyperpolarization Values: ', hyp_arr)
-    peak_ca_vals = np.array(peak_ca_vals)
-    hyp_opts = get_ach_curve_params(result_d['ach_levels'][1:], hyp_arr, positive=False)
-    print('Hyperpolarization EC50: ', 10**hyp_opts[1])
+    if hyp_arr.size > 3:
+        peak_ca_vals = np.array(peak_ca_vals)
+        hyp_opts = get_ach_curve_params(result_d['ach_levels'][1:], hyp_arr, positive=False)
+        print('Hyperpolarization EC50: ', 10**hyp_opts[1])
 
     ret_figs = []
 
     ach_span_v1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
-                           line_dash='dashed', line_width=3)
+                            line_dash='dashed', line_width=3)
     ach_span_v2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
-                           line_dash='dashed', line_width=3)
+                            line_dash='dashed', line_width=3)
 
     v_fig = bplt.figure(title='Somatic Membrane Potential')
     v_fig.xaxis.axis_label = 'time (msec)'
@@ -2576,25 +2610,36 @@ def plot_ahp_adp_test(result_d, phasic_or_tonic, ach_times=[0, 50], t_ignore=0):
     pca_fig.yaxis.axis_label = '[Ca] ({}M)'.format(mu)
     ret_figs.append(pca_fig)
 
-    for a_i, ach_conc in enumerate(result_d['ach_levels']):
+    dashes = ['solid', 'solid', 'solid', 'solid','solid', 'solid','solid', 'solid','solid', 'solid',]
 
+    if plot_indices:
+        my_is = plot_indices
+    else:
+        my_is = range(len(result_d['ach_levels']))
+
+    for i_i, a_i in enumerate(my_is):
+        ach_conc = result_d['ach_levels'][a_i]
         i_ig = np.squeeze(np.where(result_d['t'][a_i] > t_ignore))
 
-        vline = v_fig.line(result_d['t'][a_i][i_ig] - t_ignore, result_d['soma_v_dict'][a_i][i_ig],
-                        color=colrs[a_i], line_width=3)
-        v_list.append(('ACh: {0:.3g} {1}M'.format(ach_conc, mu), [vline,]))
-        cytline = ca_fig.line(result_d['t'][a_i][i_ig] - t_ignore, 1000.0*result_d['ca_cyt_dict'][a_i][i_ig],
-                              color=colrs[a_i], line_width=3)
-        cyt_list.append(('ACh: {0:.3g} {1}M'.format(ach_conc, mu), [cytline,]))
-        erline = er_fig.line(result_d['t'][a_i][i_ig] - t_ignore, 1000.0 * result_d['ca_er_dict'][a_i][i_ig],
-                             color=colrs[a_i], line_width=3)
-        er_list.append(('ACh: {0:.3g} {1}M'.format(ach_conc, mu), [erline, ]))
-        ik_fig.line(result_d['t'][a_i][i_ig] - t_ignore, result_d['soma_isk_dict'][a_i][i_ig],
-                    color=colrs[2*a_i],
-                    legend='I_SK ACh: {0:.3g} {1}M'.format(ach_conc, mu), line_width=3)
-        ik_fig.line(result_d['t'][a_i][i_ig] - t_ignore, result_d['soma_isk_dict'][a_i][i_ig],
-                    color=colrs[2*a_i+1],
-                    legend='I_M ACh: {0:.3g} {1}M'.format(ach_conc, mu), line_width=3)
+        if not plot_indices or a_i in plot_indices:
+            vline = v_fig.line(result_d['t'][a_i][i_ig] - t_ignore, result_d['soma_v_dict'][a_i][i_ig],
+                               color=colrs[i_i], line_width=3, line_dash=dashes[i_i])
+            v_list.append(('{0:.3f} {1}M'.format(ach_conc, mu), [vline,]))
+
+            cytline = ca_fig.line(result_d['t'][a_i][i_ig] - t_ignore, 1000.0*result_d['ca_cyt_dict'][a_i][i_ig],
+                                  color=colrs[i_i], line_width=3, line_dash=dashes[i_i])
+            cyt_list.append(('{0:.3f} {1}M'.format(ach_conc, mu), [cytline,]))
+
+            erline = er_fig.line(result_d['t'][a_i][i_ig] - t_ignore, 1000.0 * result_d['ca_er_dict'][a_i][i_ig],
+                                 color=colrs[i_i], line_width=3, line_dash=dashes[i_i])
+            er_list.append(('{0:.3f} {1}M'.format(ach_conc, mu), [erline, ]))
+
+            ik_fig.line(result_d['t'][a_i][i_ig] - t_ignore, result_d['soma_isk_dict'][a_i][i_ig],
+                        color=colrs[2*i_i], line_dash=dashes[i_i],
+                        legend='I_SK ACh: {0:.3g} {1}M'.format(ach_conc, mu), line_width=3)
+            ik_fig.line(result_d['t'][a_i][i_ig] - t_ignore, result_d['soma_isk_dict'][a_i][i_ig],
+                        color=colrs[2*i_i+1], line_dash=dashes[i_i],
+                        legend='I_M ACh: {0:.3g} {1}M'.format(ach_conc, mu), line_width=3)
 
     v_leg = bmod.Legend(items=v_list, location='center')
     v_fig.add_layout(v_leg, 'right')
@@ -2607,18 +2652,19 @@ def plot_ahp_adp_test(result_d, phasic_or_tonic, ach_times=[0, 50], t_ignore=0):
 
     dep_items = []
 
-    dep_line = dep_fig.line(result_d['ach_levels'][1:], dep_arr, line_width=3, color='blue', legend='Depolarization')
+    dep_line = dep_fig.line(result_d['ach_levels'][1:], dep_arr, line_width=3, color='blue')
     # dep_items.append(('Depolarization', [dep_line,]))
-    dep_fig.circle(result_d['ach_levels'][1:], dep_arr, size=12, color='blue')
-    hyp_line = dep_fig.line(result_d['ach_levels'][1:], hyp_arr, line_width=3, color='red', legend='Hyperpolarization')
+    dep_fig.square(result_d['ach_levels'][1:], dep_arr, size=12, color='blue', legend='Depolarization')
+    hyp_line = dep_fig.line(result_d['ach_levels'][1:], hyp_arr, line_width=3, color='red')
     # dep_items.append(('Hyperpolarization', [hyp_line, ]))
-    dep_fig.circle(result_d['ach_levels'][1:], hyp_arr, size=12, color='red')
-    dep_fig.legend.location = 'bottom_left'
+    dep_fig.circle(result_d['ach_levels'][1:], hyp_arr, size=12, color='red', legend='Hyperpolarization')
+    dep_fig.legend.location = 'center_right'
     # dep_leg = bmod.Legend(items=dep_items, location='center')
     # dep_fig.add_layout(dep_leg, 'right')
 
-    pca_fig.line(result_d['ach_levels'][1:], peak_ca_vals*1000.0, line_width=3, color='green')
-    pca_fig.circle(result_d['ach_levels'][1:], peak_ca_vals*1000.0, size=12, color='green')
+    if len(peak_ca_vals) > 3:
+        pca_fig.line(result_d['ach_levels'][1:], peak_ca_vals*1000.0, line_width=3, color='green')
+        pca_fig.diamond(result_d['ach_levels'][1:], peak_ca_vals*1000.0, size=12, color='green')
 
     v_fig.legend.location = 'bottom_right'
 
@@ -2656,62 +2702,27 @@ if __name__ == '__main__':
     all_figs = []
     all_names = []
 
-    my_dict_ach = {'frac_cyt': 0.9,
-                'frac_er': 0.1,
-                'ca ext val': 2.0,
-                'g_serca': 63525.0,
-                'g ext leak': 3.2e-5,
-                'ca_cyt_val': 0.1*0.001,
-                'ca_er_val': 175.0*0.001,
-                'apical calcium mult': 300.0,
-                'soma calcium mult': 360.0,
-                'soma kca mult': 5.5,
-                'apical kca mult': 5.5,
-                'soma im mult': 1.0,
-                'axon im mult': 1.0,
-                'ca_diff': 0.03,
-                'ip3_diff': 0.3,
-                'ip3_init': 0.000003,
-                'ip3k_total': 0.05,
-                'ip5p_total': 0.01,
-                'ip3r count': 1e-3,
-                'cbd_total': 0.045,
-                'cbdh_KD': 0.000237,
-                'cbdh_kon': 11.0,
-                'cbdl_KD': 0.000411,
-                'cbdl_kon': 87.0,
-                'car_total': 86.0,
-                'car_KD': 2.0,
-                'car_kon': 0.01,
-                'dye identity': 'ogb1',
-                'ogb1_total': 0.0,
-                'ogb1_KD': 0.00043,  # 0.0004
-                'ogb1_kon': 100.0,  # 10.0
-                'ogb5_total': 0.0,
-                'ogb5_KD': 0.01,
-                'ogb5_kon': 10.0,
-                'g_ip3r': 7.5e5,  # 0.9e6,  # 1e5,
-                'g_er_leak': 2100.0,  # 27.5, # 2800.0,  # 1.8
-                'total pmca': 2.56e-5,
-                'total ncx': 0.0,
-                'ip3 lock': False,
-                'tau_leak_soma': 1.0,
-                'tau_leak_apical': 1.0,
-                'm1 init': 15.87*5.0,
-                'g init': 40.0,
-                'plc init': 3.1198*5.0,
-                'pip2 init': 3232,  # 3232,
-                'pi4p init': 4540,  # 4540,
-                'pi init': 226975.0,  # 226975
-                }
+    # mpg1412009_A_idA is the file for the parameters that the M1 model was tuned for
+    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    home_path = os.getcwd()
+    # t_path = join(os.getcwd(), 'morphologies/mpg141208_B_idA.asc')
 
-    res_dir = os.path.join(home_path, 'results', 'M1 Model Results')
+    path_parts = os.getcwd().split('/')
+    home_i = path_parts.index('ca1_muscarinic_modulation')
+    home_path = '/'.join(path_parts[:(home_i + 1)])
 
-    if not os.path.exists(res_dir):
-        os.makedirs(res_dir)
+    config_name = 'config_mpg141209_A_idA_test_doi' # Original Model
+    # config_name = 'config_mpg141208_B_idA'
+    spec_name = config_name + '_spec'
+    conf_path = os.path.join(home_path, 'config_files', config_name)
+    spec_path = conf_path + '_spec'
+    conf_path += '.txt'
+    spec_path += '.txt'
 
+    config_obj = conf.load_config(conf_path, spec_path)
+
+    res_dir = os.path.join(home_path,
+                           'results/M1 Model Results')
     res_h5file = os.path.join(os.path.join(res_dir, 'm1_model_simulations.h5'))
 
     # Simulation Options
@@ -2722,20 +2733,22 @@ if __name__ == '__main__':
     # 'tonic acceleration': Tonic ACh Spike Acceleration
     # 'tonic input resistance': Tonic Input Resistance
     # 'tonic rheobase': Tonic ACh rheobase
-    # 'calcium wave': plots a series of images that show the calcium concentrations in each section at given time steps
+    # 'epsp modulation': EPSP Modulation
+    # 'epsp sweep': EPSP Amplitude vs Time of ACh Pulse
+    # 'buffer test': Test Calcium Dynamics vs Presence of Intracellular Buffer
 
-    simulation_choice = 'phasic acceleration'
-    save_figs = True
+    simulation_choice = 'tonic acceleration'
+    save_figs = False
     save_result = True
-    use_file_to_plot = False
+    use_file_to_plot = True
 
     if simulation_choice == 'ahp test':
         #############
         ## Limited AHP Test
         #############
 
-        ahp_dict = run_ahp_test(my_dict_ach, run_time=5000, current_dict={'amp': 0.0, 'start': 10100, 'dur': 250.0})
-        # ahp_dict = run_ahp_test(my_dict_ach, run_time=5000, current_dict={'amp': 1.2, 'start': 10100, 'dur': 250.0})
+        ahp_dict = run_ahp_test(config_obj, run_time=5000, current_dict={'amp': 0.0, 'start': 10100, 'dur': 250.0})
+        # ahp_dict = run_ahp_test(config_obj, run_time=5000, current_dict={'amp': 1.2, 'start': 10100, 'dur': 250.0})
 
         ahp_figs = plot_ahp_test(ahp_dict, z_times=[350, 450], t_ignore=0)
         ahp_names = ['ahp_test_v', 'ahp_test_zoom', 'ahp_test_ca_cyt']
@@ -2749,10 +2762,11 @@ if __name__ == '__main__':
         ###############################################
 
         ach_levs = np.logspace(-3, 2, 11)
+        v_plot_inds = [0, 1, 3, 5, 7, 9, 11]
         h5_path = os.path.join(res_dir, 'tonic_depolarization_1min.h5')
 
         if not use_file_to_plot:
-            ton_dict = run_tonic_test(my_dict_ach, run_time=61500, ach_levels=[0.0] + list(ach_levs),
+            ton_dict = run_tonic_test(config_obj, run_time=61500, ach_levels=[0.0] + list(ach_levs),
                                       ach_times=[1500, 61500])
 
             if save_result:
@@ -2785,7 +2799,8 @@ if __name__ == '__main__':
 
                 print('Results saved to {}'.format(h5_path))
 
-                ton_figs = plot_ahp_adp_test(ton_dict, ach_times=[1500, 61500], t_ignore=500, phasic_or_tonic='Tonic')
+                ton_figs = plot_ahp_adp_test(ton_dict, ach_times=[1500, 61500], t_ignore=500, phasic_or_tonic='Tonic',
+                                             plot_indices=v_plot_inds)
         else:
             with pd.HDFStore(h5_path) as h5file:
 
@@ -2819,7 +2834,8 @@ if __name__ == '__main__':
                         ai = int(k.split('_')[-1])
                         ton_dict['t'][ai] = h5file[k]
 
-                ton_figs = plot_ahp_adp_test(ton_dict, ach_times=[1500, 10500], t_ignore=500, phasic_or_tonic='Tonic')
+                ton_figs = plot_ahp_adp_test(ton_dict, ach_times=[1500, 61500], t_ignore=500, phasic_or_tonic='Tonic',
+                                             plot_indices=v_plot_inds)
 
         ton_names = ['tonic_test_v', 'tonic_test_cyt', 'tonic_test_er', 'tonic_test_ik', 'tonic_test_depol',
                      'tonic_test_peak_ca']
@@ -2832,11 +2848,13 @@ if __name__ == '__main__':
         ################################################
 
         ach_levs = np.logspace(-3, 2, 11)
+        v_plot_inds = [0, 1, 3, 5, 7, 9, 11]
+
         h5_path = os.path.join(res_dir, 'phasic_depolarization.h5')
 
         if not use_file_to_plot:
 
-            phasic_dict = run_tonic_test(my_dict_ach, run_time=10500, ach_levels=[0.0] + list(ach_levs),
+            phasic_dict = run_tonic_test(config_obj, run_time=10500, ach_levels=[0.0] + list(ach_levs),
                                          ach_times=[1500, 1550])
 
             if save_result:
@@ -2870,7 +2888,8 @@ if __name__ == '__main__':
 
                 print('Results saved to {}'.format(h5_path))
 
-            phasic_figs = plot_ahp_adp_test(phasic_dict, ach_times=[1500, 1550], t_ignore=500, phasic_or_tonic='Phasic')
+            phasic_figs = plot_ahp_adp_test(phasic_dict, ach_times=[1500, 1550], t_ignore=500, phasic_or_tonic='Phasic',
+                                            plot_indices=v_plot_inds)
         else:
             with pd.HDFStore(h5_path) as h5file:
                 phasic_dict = {'soma_v_dict': {},
@@ -2903,7 +2922,8 @@ if __name__ == '__main__':
                         ai = int(k.split('_')[-1])
                         phasic_dict['t'][ai] = h5file[k]
 
-                phasic_figs = plot_ahp_adp_test(phasic_dict, ach_times=[1500, 1550], t_ignore=500, phasic_or_tonic='Phasic')
+                phasic_figs = plot_ahp_adp_test(phasic_dict, ach_times=[1500, 1550], t_ignore=500,
+                                                phasic_or_tonic='Phasic', plot_indices=v_plot_inds)
         phasic_names = ['phasic_ahpadp_v', 'phasic_ahpadp_cyt', 'phasic_ahpadp_er', 'phasic_ahpadp_ik', 'phasic_ahpadp_depol',
                         'phasic_ahpdadp_peak_ca']
 
@@ -2919,14 +2939,15 @@ if __name__ == '__main__':
         v_plot_inds = [0,1,3,5,7,9,11]
         h5_path = os.path.join(res_dir, 'phasic_acceleration.h5')
         sim_dur = 10500
+        # Time Allowed for model to achieve steady state. Time series before this value are not plotted
         time_ignore = 500
-        c_dict = {'amp': 0.525, 'start': 0.0, 'dur': sim_dur}
+        c_dict = {'amp': 0.42, 'start': 0.0, 'dur': sim_dur}
 
         ach_levs = [0.0] + list(ach_levs)
 
         if not use_file_to_plot:
 
-            acc_dict = run_tonic_test(my_dict_ach, run_time=sim_dur, ach_times=[1500, 1550],
+            acc_dict = run_tonic_test(config_obj, run_time=sim_dur, ach_times=[1500, 1550],
                                       current_dict=c_dict, ach_levels=ach_levs)
             if save_result:
 
@@ -3019,14 +3040,15 @@ if __name__ == '__main__':
 
         ach_levs = np.logspace(-3, 2, 11)
         h5_path = os.path.join(res_dir, 'tonic_acceleration.h5')
-        sim_dur = 20500
-        c_dict = {'amp': 0.525, 'start': 0.0, 'dur': sim_dur}
+        v_plot_inds = [0, 1, 3, 5, 7, 9, 11]
+        sim_dur = 10500
+        c_dict = {'amp': 0.420, 'start': 0.0, 'dur': sim_dur}
 
         ach_levs = [0.0] + list(ach_levs)
 
         if not use_file_to_plot:
 
-            acc_dict = run_tonic_test(my_dict_ach, run_time=sim_dur, ach_levels=ach_levs,
+            acc_dict = run_tonic_test(config_obj, run_time=sim_dur, ach_levels=ach_levs,
                                       ach_times=[1500, sim_dur], current_dict=c_dict)
 
             if save_result:
@@ -3058,7 +3080,7 @@ if __name__ == '__main__':
                     h5file.put('ach_levels', ach_series, format='table', data_columns=True)
 
                 print('Results saved to {}'.format(h5_path))
-                acc_figs = plot_spike_acc_test(acc_dict, ach_times=[1500, 10500], t_ignore=500)
+                acc_figs = plot_spike_acc_test(acc_dict, ach_times=[1500, 20500], t_ignore=500, plot_inds=v_plot_inds)
         else:
             with pd.HDFStore(h5_path) as h5file:
                 acc_dict = {'soma_v_dict': {},
@@ -3091,7 +3113,7 @@ if __name__ == '__main__':
                         ai = int(k.split('_')[-1])
                         acc_dict['t'][ai] = np.array(h5file[k])
 
-                acc_figs = plot_spike_acc_test(acc_dict, ach_times=[1500, 10500], t_ignore=500)
+                acc_figs = plot_spike_acc_test(acc_dict, ach_times=[1500, 20500], t_ignore=500, plot_inds=v_plot_inds)
 
         acc_names = ['tonic_accel_test_ifr', 'tonic_accel_test_accel',
                      'tonic_accel_test_accel_vs_ach', 'tonic_accel_test_cessation_vs_ach', 'tonic_accel_test_cyt',
@@ -3117,7 +3139,7 @@ if __name__ == '__main__':
         ach_levels = [0.0] + list(ach_levs)
 
         if not use_file_to_plot:
-            inr_dict = run_input_resistance_test(my_dict_ach, run_time=sim_dur, ach_levels=ach_levels,
+            inr_dict = run_input_resistance_test(config_obj, run_time=sim_dur, ach_levels=ach_levels,
                                                  ach_times=[200, sim_dur - 200], current_dict=c_dict)
 
             if save_result:
@@ -3258,7 +3280,7 @@ if __name__ == '__main__':
 
         if not use_file_to_plot:
 
-            rheo_dict = run_rheobase_test(my_dict_ach, run_time=sim_dur, ach_levels=ach_levels, starting_int=[0.0, 0.4],
+            rheo_dict = run_rheobase_test(config_obj, run_time=sim_dur, ach_levels=ach_levels, starting_int=[0.0, 0.4],
                                           desired_int=0.01, ach_times=[100, sim_dur - 100], current_dict=c_dict)
 
             if save_result:
@@ -3339,14 +3361,131 @@ if __name__ == '__main__':
         thresh_names += ['tonic_rheobase_test_rheobase_vs_ach']
         all_names += thresh_names
 
+    elif simulation_choice == 'epsp modulation':
+        ####################
+        ## EPSP modulation
+        ####################
+
+        ach_levs = np.logspace(-2, 2, 5)
+
+        sim_dur = 5200
+
+        ach_levels = [0.0] + list(ach_levs)
+
+        t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
+        dis_cell = ca1p.MyCell(t_path, config_obj)
+        dis_cell.insert_rxd()
+
+        syn_locs = {}
+
+        for sec_list in [dis_cell.somatic, dis_cell.apical, dis_cell.basal]:
+            for sec in sec_list:
+                syn_locs[sec.name()] = [0.5,]
+
+        dv_dict = run_epsp_test(dis_cell, [100, sim_dur - 100], syn_locs,
+                                run_time=sim_dur,
+                                syn_delay=4000,
+                                ach_levels=ach_levels,
+                                synapse_dict={'amplitude': 0.00115, 'tau1': 0.1, 'tau2': 5.0, 'e': 0.0, 'delay': 1.0})
+
+        min_dv_dict = {}
+        min_dv_dict['min dV'] = dv_dict['min dV']
+        min_dv_dict['max dV'] = dv_dict['max dV']
+        min_dv_dict['ach levels'] = dv_dict['ach levels']
+        min_dv_dict['depolarization values'] = dv_dict['depolarization values']
+        min_dv_dict['soma v dict'] = {}
+        min_dv_dict['t'] = {}
+
+        for a_i, a_val in enumerate(ach_levels):
+            min_dv_dict['soma v dict'][a_i] = {}
+            min_dv_dict['t'][a_i] = {}
+            for sec_name in dv_dict['soma v dict'][a_i]:
+                if 'soma' in sec_name:
+                    min_dv_dict['soma v dict'][a_i][sec_name] = dv_dict['soma v dict'][a_i][sec_name]
+                    min_dv_dict['t'][a_i][sec_name] = dv_dict['t'][a_i][sec_name]
+
+        # my_dict = min_dv_dict
+        now = dat.datetime.now()
+        date_str = now.strftime('%Y_%m_%d')
+        file_name = 'dv_results_{}.p'.format(date_str)
+        print(file_name)
+
+        with open(file_name, 'wb') as p_obj:
+            pickle.dump(min_dv_dict, p_obj)
+
+        l_file = 'dv_results_2019_10_03.p'
+
+        with open(l_file, 'rb') as p_obj:
+            my_dict = pickle.load(p_obj)
+
+        line_dict = dis_cell.get_line_segs()
+        dv_plots = plot_epsp_test(my_dict, line_dict, ach_times=[100, sim_dur - 100])
+
+        all_figs += dv_plots
+
+        dv_names = []
+
+        for ach_level in ach_levels:
+            lev_str = str(ach_level).replace('.', 'p')
+            dv_names.append('dV_vs_location_{0}'.format(lev_str))
+
+        dv_names += ['dV_vs_ACh']
+        all_names += dv_names
+
+    elif simulation_choice == 'epsp sweep':
+        ########################################
+        # EPSP amplitude vs Time of ACh Pulse
+        ########################################
+
+        t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
+        dis_cell = ca1p.MyCell(t_path, config_obj)
+        dis_cell.insert_rxd()
+
+        sim_dur = 5000
+        ach_level = 100
+        ach_times = [1200, 1250]
+        stim_times = [1000, 1250, 1400, 1700, 2200, 2700, 3200]
+
+        targ_sec = {'somatic[0]': [0.5]}
+
+        sw_dict = run_epsp_sweep(dis_cell, ach_times, stim_times, targ_sec, run_time=sim_dur,
+                                 synapse_dict={'amplitude': 0.00115, 'tau1': 0.1, 'tau2': 5.0, 'e': 0.0, 'delay': 1.0})
+        sweep_figs = plot_epsp_sweep(sw_dict, t_ignore=200)
+        all_figs += sweep_figs
+
+        sweep_names = ['epsp_sweep_soma_v', 'epsp_sweep_dv', 'epsp_sweep_perc']
+        all_names += sweep_names
+
+    elif simulation_choice == 'buffer test':
+        ##############################################################
+        # Test Calcium Dynamics vs Presence of Intracellular Buffer
+        ##############################################################
+
+        sim_dur = 5200
+        ach_levels = [100.0]  # (uM)
+        ach_times = [1200, 1250]
+
+        calbindin_concs = [0.0, 0.045, 0.090]  # (mM)
+
+        buff_dict = run_buffer_comparison(config_obj, calbindin_concs, ach_times, ach_concs=ach_levels, run_time=sim_dur)
+        buff_figs = plot_buffer_comparison(buff_dict, t_ignore=200)
+        all_figs += buff_figs
+
+        b_names = ['buffer_comp_soma_v', 'buffer_comp_ca_cyt', 'buffer_comp_ca_er', 'buffer_comp_time2peak',
+                   'buffer_comp_integrated_ca_cyt_2sec']
+
+        for ach_conc in ach_levels:
+            buff_names = [b_str+'_ACh_{0}'.format(ach_conc) for b_str in b_names]
+            all_names += buff_names
+
     elif simulation_choice == 'calcium wave':
-        # tl_dict = get_line_segs_calcium(my_dict_ach)
+        # tl_dict = get_line_segs_calcium(config_obj)
 
         time_steps = [1500, 1600, 1700, 1800, 1900, 2000, 3000, 4000]
         ach_times = [1510, 1560]
         ach_conc = 100
         t_ig = 500
-        line_dict, res_dict = run_calcium_wave(my_dict_ach, time_steps, ach_times, ach_conc, run_time=4000)
+        line_dict, res_dict = run_calcium_wave(config_obj, time_steps, ach_times, ach_conc, run_time=4000)
 
         cal_figs = plot_calcium_wave(res_dict, line_dict, t_ignore=t_ig)
 
@@ -3367,7 +3506,6 @@ if __name__ == '__main__':
             set_size = False
         else:
             set_size = True
-        print(f_name, set_size)
         plt_res.configure_plot(fig, set_size=set_size)
 
     ########################
@@ -3381,7 +3519,7 @@ if __name__ == '__main__':
 
         t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-        cell = ca1p.MyCell(t_path, True, my_dict_ach)
+        cell = ca1p.MyCell(t_path, config_obj)
 
         my_line_dict = cell.get_line_segs()
 
@@ -3409,22 +3547,27 @@ if __name__ == '__main__':
         all_figs += [plot_cell_bokeh(my_line_dict, my_color_dict, title='Sections Using RXD')]
         all_names += ['cell_morphology']
 
-    if all_figs:
-        bkio.show(blay.column(all_figs))
-
     if save_figs:
 
-        # driver_path = r'/usr/local/bin/geckodriver'
-        # my_opts = webdriver.firefox.options.Options()
-        # # my_opts.add_argument('start-maximized')
-        # # my_opts.add_argument('disable-infobars')
-        # my_opts.add_argument('--disable-extensions')
-        # my_opts.add_argument('window-size=1200,1000')
-        # my_opts.headless = True
-        #
-        # my_driver = webdriver.Firefox(options=my_opts, executable_path=driver_path)
+        driver_path = r'/usr/local/bin/geckodriver'
+        my_opts = webdriver.firefox.options.Options()
+        my_opts.add_argument('start-maximized')
+        my_opts.add_argument('disable-infobars')
+        my_opts.add_argument('--disable-extensions')
+        my_opts.add_argument('window-size=1200,1000')
+        my_opts.headless = True
+
+        my_driver = webdriver.Firefox(options=my_opts, executable_path=driver_path)
 
         for fig, name in zip(all_figs, all_names):
             fig_path = os.path.join(res_dir, '{}.png'.format(name))
-            bkio.export_png(fig, filename=fig_path)  # , webdriver=my_driver)
+            print('Saving {}'.format(fig_path))
 
+            bkio.export_png(fig, filename=fig_path) # , webdriver=my_driver)
+
+            # fig_path = os.path.join(res_dir, '{}.svg'.format(name))
+            # fig.output_backend = "svg"
+            # bkio.export_svgs(fig, filename=fig_path)
+
+    if all_figs and not save_figs:
+        bkio.show(blay.column(all_figs))

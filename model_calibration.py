@@ -1,14 +1,22 @@
+import datetime as dat
 import numpy as np
+
 import os
 import pandas as pd
+import re
 import scipy as sp
 import scipy.stats as scat
-import ca1_pyramidal as ca1p
+import sys
 
+from mpl_toolkits.mplot3d import Axes3D
+from itertools import cycle
 from neuron import h
+from os.path import join
 from scipy import integrate as spint
 from scipy import optimize as spopt
+
 import matplotlib.pyplot as plt
+
 import bokeh.io as bkio
 import bokeh.layouts as blay
 import bokeh.models as bmod
@@ -16,17 +24,25 @@ import bokeh.plotting as bplt
 import frequency_analysis as fan
 from bokeh.palettes import Category20 as palette
 from bokeh.palettes import Category20b as paletteb
-from selenium import webdriver
+
+# from selenium import webdriver
 
 colrs = palette[20] + paletteb[20]
 
+import config_utils as conf
 import plot_results as plt_res
 
+#
+# module_path = os.getcwd() # os.path.abspath(os.path.join('../..'))
+# if module_path not in sys.path:
+#     sys.path.append(module_path)
 
+import ca1_pyramidal as ca1p
 
 mu = u'\u03BC'
 delta = u'\u0394'
 tau = u'\u03C4'
+
 
 # chrome_path = r'/usr/local/bin/chromedriver'
 # my_opts = webdriver.chrome.options.Options()
@@ -35,6 +51,19 @@ tau = u'\u03C4'
 # my_opts.add_argument('--disable-extensions')
 # my_opts.add_argument('window-size=1200,1000')
 # my_opts.add_argument('--headless')
+
+
+def atoi(text):
+    return int(text) if text.isdigit() else text
+
+
+def natural_keys(text):
+    '''
+    alist.sort(key=natural_keys) sorts in human order
+    http://nedbatchelder.com/blog/200712/human_sorting.html
+    (See Toothy's implementation in the comments)
+    '''
+    return [atoi(c) for c in re.split(r'(\d+)', text)]
 
 
 def single_exponential(x_data, tau):
@@ -66,16 +95,17 @@ def estimate_decay_constant(t_vals, f_vals, change_tol=0.001):
 
 
 def run_recharge_simulation(param_dict, sim_dur=180000):
-
-    t_path = os.path.join(os.getcwd(), 'morphologies', 'mpg141209_A_idA.asc')
+    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
     t_steps = np.arange(0, sim_dur, 100)
 
-    cell = ca1p.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, param_dict)
+    cell.insert_rxd()
 
     # Calreticulin Parameter Values
     total_car = param_dict['car_total']
     KD_car = param_dict['car_KD']
     car_kon = param_dict['car_kon']
+    car_koff = KD_car * car_kon
 
     carca_init = total_car * 0.001 / (KD_car + 0.01)
     car_init = total_car - carca_init
@@ -100,9 +130,23 @@ def run_recharge_simulation(param_dict, sim_dur=180000):
     ca_er_arr = np.zeros((t_steps.shape[0], 3))
     carca_arr = np.zeros(t_steps.shape)
 
-    cbdhca_arr = np.zeros(t_steps.shape)
-    cbdlca_arr = np.zeros(t_steps.shape)
     ogb1ca_arr = np.zeros(t_steps.shape)
+
+    # dyeca_arr = np.zeros(t_steps.shape)
+    #
+    # e1_arr = np.zeros(t_steps.shape)
+    # e1_2ca_arr = np.zeros(t_steps.shape)
+    # e1_2ca_p_arr = np.zeros(t_steps.shape)
+    # e2_2ca_p_arr = np.zeros(t_steps.shape)
+    # e2_p_arr = np.zeros(t_steps.shape)
+    # e2_arr = np.zeros(t_steps.shape)
+    #
+    # c1_arr = np.zeros(t_steps.shape)
+    # c2_arr = np.zeros(t_steps.shape)
+    # c3_arr = np.zeros(t_steps.shape)
+    # c4_arr = np.zeros(t_steps.shape)
+    # o5_arr = np.zeros(t_steps.shape)
+    # o6_arr = np.zeros(t_steps.shape)
 
     for t_i, t_step in enumerate(t_steps):
         h.continuerun(t_step)
@@ -119,8 +163,38 @@ def run_recharge_simulation(param_dict, sim_dur=180000):
         ogb1ca_arr[t_i] = cell.dyeca[cell.cyt].nodes(cell.somatic[0])(0.5)[0].concentration
 
         carca_arr[t_i] = cell.carca[cell.er].nodes(cell.somatic[0])(0.5)[0].concentration
+        # dyeca_arr[t_i] = dyeca.nodes(soma)(0.5)[0].concentration
+        #
+        # e1_arr[t_i] = e1_serca.nodes(soma)(0.5)[0].concentration
+        # e1_2ca_arr[t_i] = e1_2ca_serca.nodes(soma)(0.5)[0].concentration
+        # e1_2ca_p_arr[t_i] = e1_2ca_p_serca.nodes(soma)(0.5)[0].concentration
+        # e2_2ca_p_arr[t_i] = e2_2ca_p_serca.nodes(soma)(0.5)[0].concentration
+        # e2_p_arr[t_i] = e2_p_serca.nodes(soma)(0.5)[0].concentration
+        # e2_arr[t_i] = e2_serca.nodes(soma)(0.5)[0].concentration
+        #
+        # c1_arr[t_i] = c1_ip3r.nodes(soma)(0.5)[0].concentration
+        # c2_arr[t_i] = c2_ip3r.nodes(soma)(0.5)[0].concentration
+        # c3_arr[t_i] = c3_ip3r.nodes(soma)(0.5)[0].concentration
+        # c4_arr[t_i] = c4_ip3r.nodes(soma)(0.5)[0].concentration
+        # o5_arr[t_i] = o5_ip3r.nodes(soma)(0.5)[0].concentration
+        # o6_arr[t_i] = o6_ip3r.nodes(soma)(0.5)[0].concentration
 
     print('Final SERCA States')
+    # e1 = cell.e1_serca.nodes(cell.somatic[0])(0.5)[0].concentration
+    # e1_2ca = cell.e1_2ca_serca.nodes(cell.somatic[0])(0.5)[0].concentration
+    # e1_2ca_p = cell.e1_2ca_p_serca.nodes(cell.somatic[0])(0.5)[0].concentration
+    # e2_2ca_p = cell.e2_2ca_p_serca.nodes(cell.somatic[0])(0.5)[0].concentration
+    # e2_p = cell.e2_p_serca.nodes(cell.somatic[0])(0.5)[0].concentration
+    # e2 = cell.e2_serca.nodes(cell.somatic[0])(0.5)[0].concentration
+
+    # total = e1 + e1_2ca + e1_2ca_p + e2_2ca_p + e2_p + e2
+    #
+    # print('e1: {}'.format(e1/total))
+    # print('e1-2ca: {}'.format(e1_2ca / total))
+    # print('e1-2ca-p: {}'.format(e1_2ca_p / total))
+    # print('e2-2ca-p: {}'.format(e2_2ca_p / total))
+    # print('e2-p: {}'.format(e2_p / total))
+    # print('e2: {}'.format(e2 / total))
 
     result_d = {'t': t_steps,
                 'sec names': ['Soma', 'Proximal Apical Trunk', 'Distal Apical Trunk'],
@@ -154,7 +228,7 @@ def plot_recharge(result_d):
     ret_figs.append(carca_fig)
     carca_fig.xaxis.axis_label = 'time (seconds)'
     carca_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
-    carca_fig.line(t_steps, 1000.0*result_d['carca'][:], line_width=3, color=colrs[0], legend='Somatic ER')
+    carca_fig.line(t_steps, 1000.0 * result_d['carca'][:], line_width=3, color=colrs[0], legend='Somatic ER')
 
     cbd_fig = bplt.figure(title='Bound Calbindin-D28k vs Time')
     ret_figs.append(cbd_fig)
@@ -169,14 +243,18 @@ def plot_recharge(result_d):
     ogb1_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
     ogb1_fig.line(t_steps, 1000.0 * result_d['ogb1ca'][:], line_width=3, color=colrs[0], legend='High')
 
-    for l_i, loc_name in enumerate(result_d['sec names']):
+    # for l_i, loc_name in enumerate(result_d['sec names']):
+    #     if 'soma' in loc_name:
+    #         cyt_ca_fig.line(t_steps, 1000.0*result_d['cyt ca'][:, l_i], line_width=4, color='black', legend='model result')
+    #         er_ca_fig.line(t_steps, 1000.0*result_d['er ca'][:, l_i], line_width=4, color='black', legend='model result')
 
-        cyt_ca_fig.line(t_steps, 1000.0*result_d['cyt ca'][:, l_i], line_width=4, color=colrs[l_i], legend=loc_name)
-        er_ca_fig.line(t_steps, 1000.0*result_d['er ca'][:, l_i], line_width=4, color=colrs[l_i], legend=loc_name)
+    for l_i, loc_name in enumerate(result_d['sec names']):
+        cyt_ca_fig.line(t_steps, 1000.0 * result_d['cyt ca'][:, l_i], line_width=4, color=colrs[l_i], legend=loc_name)
+        er_ca_fig.line(t_steps, 1000.0 * result_d['er ca'][:, l_i], line_width=4, color=colrs[l_i], legend=loc_name)
 
     cyt_ca_fig.legend.location = 'bottom_right'
 
-    return ret_figs    
+    return ret_figs
 
 
 def run_current_injection(rxd_sim, param_dict={}, sim_dur=500, c_int=[50, 100], c_amp=1):
@@ -194,9 +272,10 @@ def run_current_injection(rxd_sim, param_dict={}, sim_dur=500, c_int=[50, 100], 
         i_array = numpy array of values for the injected current\n
     """
 
-    t_path = os.path.join(os.getcwd(), 'morphologies', 'mpg141209_A_idA.asc')
+    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = ca1p.MyCell(t_path, rxd_sim, param_dict)
+    cell = ca1p.MyCell(t_path, param_dict)
+    cell.insert_rxd()
 
     t_curr = h.IClamp(cell.somatic[0](0.5))
 
@@ -234,17 +313,14 @@ def run_current_injection(rxd_sim, param_dict={}, sim_dur=500, c_int=[50, 100], 
         s_dyeca = h.Vector().record(cell.dyeca.nodes(cell.somatic[0])[0]._ref_concentration)
         a_dyeca = h.Vector().record(cell.dyeca.nodes(cell.apical[9])[0]._ref_concentration)
 
-        s_cbdhca = h.Vector().record(cell.cbdhca.nodes(cell.somatic[0])[0]._ref_concentration)
-        a_cbdhca = h.Vector().record(cell.cbdhca.nodes(cell.apical[9])[0]._ref_concentration)
-
-        s_cbdlca = h.Vector().record(cell.cbdlca.nodes(cell.somatic[0])[0]._ref_concentration)
-        a_cbdlca = h.Vector().record(cell.cbdlca.nodes(cell.apical[9])[0]._ref_concentration)
+        # s_cbdhca = h.Vector().record(cell.cbdhca.nodes(cell.somatic[0])[0]._ref_concentration)
+        # a_cbdhca = h.Vector().record(cell.cbdhca.nodes(cell.apical[9])[0]._ref_concentration)
+        #
+        # s_cbdlca = h.Vector().record(cell.cbdlca.nodes(cell.somatic[0])[0]._ref_concentration)
+        # a_cbdlca = h.Vector().record(cell.cbdlca.nodes(cell.apical[9])[0]._ref_concentration)
 
         s_carca = h.Vector().record(cell.carca.nodes(cell.somatic[0])[0]._ref_concentration)
         a_carca = h.Vector().record(cell.carca.nodes(cell.apical[9])[0]._ref_concentration)
-
-        s_ip3r = h.Vector().record(cell.ro_ip3r.nodes(cell.somatic[0])[0]._ref_concentration)
-        a_ip3r = h.Vector().record(cell.ro_ip3r.nodes(cell.apical[9])[0]._ref_concentration)
 
     h.cvode.active(1)
 
@@ -253,20 +329,23 @@ def run_current_injection(rxd_sim, param_dict={}, sim_dur=500, c_int=[50, 100], 
     h.tstop = sim_dur
     h.celsius = 34.0
 
+    # h.load_file('negative_init.hoc')
+    # h.init()
+
     h.stdinit()
 
     print('Running current injection, amplitude = {0} nA'.format(c_amp))
 
     h.continuerun(sim_dur)
 
-    print('Final IP3R Values')
-    print('r: {0}'.format(cell.r_ip3r.nodes(cell.somatic[0]).concentration))
-    print('ri: {0}'.format(cell.ri_ip3r.nodes(cell.somatic[0]).concentration))
-    print('ro: {0}'.format(cell.ro_ip3r.nodes(cell.somatic[0]).concentration))
-    print('rc: {0}'.format(cell.rc_ip3r.nodes(cell.somatic[0]).concentration))
-    print('rc2: {0}'.format(cell.rc2_ip3r.nodes(cell.somatic[0]).concentration))
-    print('rc3: {0}'.format(cell.rc3_ip3r.nodes(cell.somatic[0]).concentration))
-    print('rc4: {0}'.format(cell.rc4_ip3r.nodes(cell.somatic[0]).concentration))
+    # print('Final IP3R Values')
+    # print('r: {0}'.format(cell.r_ip3r.nodes(cell.somatic[0]).concentration))
+    # print('ri: {0}'.format(cell.ri_ip3r.nodes(cell.somatic[0]).concentration))
+    # print('ro: {0}'.format(cell.ro_ip3r.nodes(cell.somatic[0]).concentration))
+    # print('rc: {0}'.format(cell.rc_ip3r.nodes(cell.somatic[0]).concentration))
+    # print('rc2: {0}'.format(cell.rc2_ip3r.nodes(cell.somatic[0]).concentration))
+    # print('rc3: {0}'.format(cell.rc3_ip3r.nodes(cell.somatic[0]).concentration))
+    # print('rc4: {0}'.format(cell.rc4_ip3r.nodes(cell.somatic[0]).concentration))
 
     print('Final IP3 Production Numbers')
     print('ip3: {0}'.format(cell.ip3.nodes(cell.somatic[0]).concentration))
@@ -293,29 +372,30 @@ def run_current_injection(rxd_sim, param_dict={}, sim_dur=500, c_int=[50, 100], 
                 'apic9_ica_n': np.array(a_ica_n),
                 'soma_ica_t': np.array(s_ica_t),
                 'apic9_ica_t': np.array(a_ica_t),
-    }
+                }
 
     if rxd_sim:
         res_dict['soma_er'] = np.array(s_ca_er)
         res_dict['apic9_er'] = np.array(a_ca_er)
-        res_dict['soma_ip3r_open'] = np.array(s_ip3r)
-        res_dict['apic9_ip3r_open'] = np.array(a_ip3r)
+        # res_dict['soma_ip3r_open'] = np.array(s_ip3r)
+        # res_dict['apic9_ip3r_open'] = np.array(a_ip3r)
         res_dict['soma_dyeca'] = np.array(s_dyeca)
         res_dict['apic9_dyeca'] = np.array(a_dyeca)
-        res_dict['soma_cbdhca'] = np.array(s_cbdhca)
-        res_dict['apic9_cbdhca'] = np.array(s_cbdhca)
-        res_dict['soma_cbdlca'] = np.array(s_cbdlca)
-        res_dict['apic9_cbdlca'] = np.array(s_cbdlca)
+        # res_dict['soma_cbdhca'] = np.array(s_cbdhca)
+        # res_dict['apic9_cbdhca'] = np.array(s_cbdhca)
+        # res_dict['soma_cbdlca'] = np.array(s_cbdlca)
+        # res_dict['apic9_cbdlca'] = np.array(s_cbdlca)
         res_dict['soma_carca'] = np.array(s_carca)
         res_dict['apic9_carca'] = np.array(a_carca)
     return res_dict
 
-    
-def run_current_injection_series(rxd_sim, param_dict={}, sim_dur=500, pulse_times=[50], pulse_amps=[1.0], pulse_length=10):
 
-    t_path = os.path.join(os.getcwd(), 'morphologies', 'mpg141209_A_idA.asc')
+def run_current_injection_series(rxd_sim, param_dict={}, sim_dur=500, pulse_times=[50], pulse_amps=[1.0],
+                                 pulse_length=10):
+    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = ca1p.MyCell(t_path, rxd_sim, param_dict)
+    cell = ca1p.MyCell(t_path, param_dict)
+    cell.insert_rxd()
 
     t_curr = h.IClamp(cell.somatic[0](0.5))
 
@@ -323,7 +403,7 @@ def run_current_injection_series(rxd_sim, param_dict={}, sim_dur=500, pulse_time
     amp_time = []
     for p_time, p_amp in zip(pulse_times, pulse_amps):
         amp_list += [p_amp, 0.0]
-        amp_time += [p_time, p_time+pulse_length]
+        amp_time += [p_time, p_time + pulse_length]
 
     c_vec = h.Vector().from_python(amp_list)
     c_time = h.Vector().from_python(amp_time)
@@ -468,17 +548,33 @@ def plot_current_injection(result_d, rxd_bool, t_inj, t_ignore=0):
         caer_fig.xaxis.axis_label = 'time (msec)'
         caer_fig.yaxis.axis_label = '[Ca]_ER ({}M)'.format(mu)
 
-        cbd_fig = bplt.figure(title='Bound Calbindin D28k vs Time')
-        result_figs.append(cbd_fig)
-        cbd_fig.line(t_arr, result_d['soma_cbdhca'][t_ig] * 1000.0, line_width=3, color='blue', legend='Soma - HA')
-        cbd_fig.line(t_arr, result_d['apic9_cbdhca'][t_ig] * 1000.0, line_width=3, color='green',
-                     legend='Apical Trunk - HA')
-        cbd_fig.line(t_arr, result_d['soma_cbdlca'][t_ig] * 1000.0, line_width=3, color='blue', legend='Soma - LA',
-                     line_dash='dashed')
-        cbd_fig.line(t_arr, result_d['apic9_cbdlca'][t_ig] * 1000.0, line_width=3, color='green',
-                     legend='Apical Trunk- LA', line_dash='dashed')
-        cbd_fig.xaxis.axis_label = 'time (msec)'
-        cbd_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
+        # cbd_fig = bplt.figure(title='Bound Calbindin D28k vs Time')
+        # result_figs.append(cbd_fig)
+        # cbd_fig.line(t_arr, result_d['soma_cbdhca'][t_ig] * 1000.0, line_width=3, color='blue', legend='Soma - HA')
+        # cbd_fig.line(t_arr, result_d['apic9_cbdhca'][t_ig] * 1000.0, line_width=3, color='green',
+        #              legend='Apical Trunk - HA')
+        # cbd_fig.line(t_arr, result_d['soma_cbdlca'][t_ig] * 1000.0, line_width=3, color='blue', legend='Soma - LA',
+        #              line_dash='dashed')
+        # cbd_fig.line(t_arr, result_d['apic9_cbdlca'][t_ig] * 1000.0, line_width=3, color='green',
+        #              legend='Apical Trunk- LA', line_dash='dashed')
+        # cbd_fig.xaxis.axis_label = 'time (msec)'
+        # cbd_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
+
+        carca_fig = bplt.figure(title='Bound Calreticulin vs Time')
+        result_figs.append(carca_fig)
+        carca_fig.line(t_arr, result_d['soma_carca'][t_ig] * 1000.0, line_width=3, color='blue', legend='Soma')
+        carca_fig.line(t_arr, result_d['apic9_carca'][t_ig] * 1000.0, line_width=3, color='green',
+                       legend='Distal Apical Trunk')
+        carca_fig.xaxis.axis_label = 'time (msec)'
+        carca_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
+
+        # ip3r_fig = bplt.figure(title='Open IP3R vs Time')
+        # result_figs.append(ip3r_fig)
+        # ip3r_fig.line(t_arr, result_d['soma_ip3r_open'][t_ig]*100, line_width=3, color='blue', legend='Soma')
+        # ip3r_fig.line(t_arr, result_d['apic9_ip3r_open'][t_ig]*100, line_width=3, color='green',
+        #               legend='Distal Apical Trunk')
+        # ip3r_fig.xaxis.axis_label = 'time (msec)'
+        # ip3r_fig.yaxis.axis_label = 'Percent Open'
 
         dye_fig = bplt.figure(title='Change in Fluorescence vs Time')
         result_figs.append(dye_fig)
@@ -490,21 +586,6 @@ def plot_current_injection(result_d, rxd_bool, t_inj, t_ignore=0):
         dye_fig.line(t_arr, dF_a, line_width=3, color='green', legend='Apical Trunk')
         dye_fig.xaxis.axis_label = 'time (msec)'
         dye_fig.yaxis.axis_label = '{}F (%)'.format(delta)
-
-        carca_fig = bplt.figure(title='Bound Calreticulin vs Time')
-        result_figs.append(carca_fig)
-        carca_fig.line(t_arr, result_d['soma_carca'][t_ig] * 1000.0, line_width=3, color='blue', legend='Soma')
-        carca_fig.line(t_arr, result_d['apic9_carca'][t_ig] * 1000.0, line_width=3, color='green', legend='Distal Apical Trunk')
-        carca_fig.xaxis.axis_label = 'time (msec)'
-        carca_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
-
-        ip3r_fig = bplt.figure(title='Open IP3R vs Time')
-        result_figs.append(ip3r_fig)
-        ip3r_fig.line(t_arr, result_d['soma_ip3r_open'][t_ig]*100, line_width=3, color='blue', legend='Soma')
-        ip3r_fig.line(t_arr, result_d['apic9_ip3r_open'][t_ig]*100, line_width=3, color='green',
-                      legend='Distal Apical Trunk')
-        ip3r_fig.xaxis.axis_label = 'time (msec)'
-        ip3r_fig.yaxis.axis_label = 'Percent Open'
 
     return result_figs
 
@@ -518,7 +599,7 @@ def run_ip3_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
     p_amps_b = []
 
     for p_t, p_a, p_h in zip(pulse_times, pulse_amps, pulse_amps_high):
-        p_times += [p_t, p_t+pulse_length]
+        p_times += [p_t, p_t + pulse_length]
         p_amps_high += [p_h, 0]
         p_amps_f += [p_a, 0]
         p_amps_b += [0, p_a]
@@ -526,9 +607,10 @@ def run_ip3_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
     print('Pulse Times: {}'.format(p_times))
     print('Pulse Amps: {}'.format(p_amps_f))
 
-    t_path = os.path.join(os.getcwd(), 'morphologies', 'mpg141209_A_idA.asc')
+    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = ca1p.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, param_dict)
+    cell.insert_rxd()
 
     if current_dict['amp']:
         t_curr = h.IClamp(cell.somatic[0](0.5))
@@ -622,9 +704,18 @@ def run_ip3_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
             print('time: {0}, ip3 rate: {1}'.format(t_step, p_amps_f[p_i]))
 
             cell.ip3.nodes(cell.cyt).concentration = p_amps_f[p_i]
+
             cell.ip3.nodes(cell.apical[apical_trunk_inds[2]]).concentration = p_amps_high[p_i]
 
+            # ip3_f = p_amps_f[p_i]
+            # ip3_b = p_amps_b[p_i]
+            #
+            # cell.ip3_prod.b_rate = ip3_f
+            # cell.ip3_prod.b_rate = ip3_b
+
             h.CVode().re_init()
+
+            # cell.ip3.concentration = ip3_amp
 
         if im_inhib_dict['perc'] < 1.0:
             if t_step == im_inhib_dict['start']:
@@ -682,7 +773,7 @@ def run_ip3_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001], 
 
 def plot_ip3_pulse(result_d, t_is=[0, -1]):
     ret_figs = []
-    
+
     cyt_t_fig = bplt.figure(title='Cytosol Calcium vs Time')
     cyt_t_fig.xaxis.axis_label = 'time (msec)'
     cyt_t_fig.yaxis.axis_label = 'concentration ({}M)'.format(mu)
@@ -717,8 +808,10 @@ def plot_ip3_pulse(result_d, t_is=[0, -1]):
     ret_figs.append(v_fig)
 
     cyt_t_fig.line(result_d['t'], result_d['soma cyt time'] * 1000.0, line_width=3, color=colrs[0], legend='somatic[0]')
-    cyt_t_fig.line(result_d['t'], result_d['apical0 cyt time'] * 1000.0, line_width=3, color=colrs[1], legend='apical[0]')
-    cyt_t_fig.line(result_d['t'], result_d['apical9 cyt time'] * 1000.0, line_width=3, color=colrs[2], legend='apical[9]',
+    cyt_t_fig.line(result_d['t'], result_d['apical0 cyt time'] * 1000.0, line_width=3, color=colrs[1],
+                   legend='apical[0]')
+    cyt_t_fig.line(result_d['t'], result_d['apical9 cyt time'] * 1000.0, line_width=3, color=colrs[2],
+                   legend='apical[9]',
                    line_dash='dashed')
 
     er_t_fig.line(result_d['t'], result_d['soma er time'] * 1000.0, line_width=3, color=colrs[0], legend='somatic[0]')
@@ -727,29 +820,32 @@ def plot_ip3_pulse(result_d, t_is=[0, -1]):
                   line_dash='dashed')
 
     ip3_t_fig.line(result_d['t'], result_d['soma ip3 time'] * 1000.0, line_width=3, color=colrs[0], legend='somatic[0]')
-    ip3_t_fig.line(result_d['t'], result_d['apical0 ip3 time'] * 1000.0, line_width=3, color=colrs[1], legend='apical[0]')
-    ip3_t_fig.line(result_d['t'], result_d['apical9 ip3 time'] * 1000.0, line_width=3, color=colrs[2], legend='apical[9]',
-                   line_dash='dashed')
-
-    ip3r_open_t_fig.line(result_d['t'], result_d['soma open probability'], line_width=3, color=colrs[0], legend='somatic[0]')
-    ip3r_open_t_fig.line(result_d['t'], result_d['apical0 open probability'], line_width=3, color=colrs[1],
+    ip3_t_fig.line(result_d['t'], result_d['apical0 ip3 time'] * 1000.0, line_width=3, color=colrs[1],
                    legend='apical[0]')
-    ip3r_open_t_fig.line(result_d['t'], result_d['apical9 open probability'], line_width=3, color=colrs[2],
+    ip3_t_fig.line(result_d['t'], result_d['apical9 ip3 time'] * 1000.0, line_width=3, color=colrs[2],
                    legend='apical[9]',
                    line_dash='dashed')
+
+    ip3r_open_t_fig.line(result_d['t'], result_d['soma open probability'], line_width=3, color=colrs[0],
+                         legend='somatic[0]')
+    ip3r_open_t_fig.line(result_d['t'], result_d['apical0 open probability'], line_width=3, color=colrs[1],
+                         legend='apical[0]')
+    ip3r_open_t_fig.line(result_d['t'], result_d['apical9 open probability'], line_width=3, color=colrs[2],
+                         legend='apical[9]',
+                         line_dash='dashed')
 
     im_t_fig.line(result_d['t'], result_d['soma im'], line_width=3, color=colrs[0], legend='somatic[0]')
     im_t_fig.line(result_d['t'], result_d['axon im'], line_width=3, color=colrs[0], legend='axon[0]')
 
     isk_t_fig.line(result_d['t'], result_d['soma isk'], line_width=3, color=colrs[0], legend='somatic[0]')
     isk_t_fig.line(result_d['t'], result_d['apical0 isk'], line_width=3, color=colrs[1],
-                  legend='apical[0]')
+                   legend='apical[0]')
     isk_t_fig.line(result_d['t'], result_d['apical9 isk'], line_width=3, color=colrs[2],
-                  legend='apical[9]', line_dash='dashed')
+                   legend='apical[9]', line_dash='dashed')
 
     ica_t_fig.line(result_d['t'], result_d['soma ica_l'], line_width=3, color=colrs[0], legend='somatic[0], i_cal')
     ica_t_fig.line(result_d['t'], result_d['apic9 ica_l'], line_width=3, color=colrs[1],
-                  legend='apical[9], i_cal')
+                   legend='apical[9], i_cal')
     ica_t_fig.line(result_d['t'], result_d['soma ica_n'], line_width=3, color=colrs[2], legend='somatic[0], i_can')
     ica_t_fig.line(result_d['t'], result_d['apic9 ica_n'], line_width=3, color=colrs[3],
                    legend='apical[9], i_can')
@@ -761,6 +857,37 @@ def plot_ip3_pulse(result_d, t_is=[0, -1]):
     v_fig.line(result_d['t'], result_d['apical0 v'], line_width=3, color=colrs[1], legend='apical[0](0.5)')
     v_fig.line(result_d['t'], result_d['apical9 v'], line_width=3, color=colrs[2], legend='apical[9](0.5)',
                line_dash='dashed')
+
+    # cal_fig = bplt.figure(title='Cytosol Calcium vs Location')
+    # cal_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
+    # ret_figs.append(cal_fig)
+    # er_fig = bplt.figure(title='ER Calcium vs Location')
+    # er_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
+    # ret_figs.append(er_fig)
+    # ip3_fig = bplt.figure(title='IP3 vs Location')
+    # ip3_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
+    # ret_figs.append(ip3_fig)
+    # ip3r_open_fig = bplt.figure(title='Open IP3R vs Location')
+    # ip3r_open_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
+    # ret_figs.append(ip3r_open_fig)
+    #
+    # for s_i, t_i in enumerate(t_is):
+    #     cal_fig.circle(result_d['node distances'], 1000.0*result_d['cyt vals'][t_i, :], size=20-s_i, color=colrs[s_i],
+    #                    legend='t={0} msec'.format(my_steps[t_i]))
+    #     cal_fig.line(result_d['node distances'], 1000.0 * result_d['cyt vals'][t_i, :], line_width=3,
+    #                  color=colrs[s_i])
+    #     er_fig.circle(result_d['node distances'], 1000.0*result_d['er vals'][t_i, :], size=20-s_i, color=colrs[s_i],
+    #                   legend='t={0} msec'.format(my_steps[t_i]))
+    #     er_fig.line(result_d['node distances'], 1000.0 * result_d['er vals'][t_i, :], line_width=3,
+    #                 color=colrs[s_i])
+    #     ip3_fig.circle(result_d['node distances'], 1000.0*result_d['ip3 vals'][t_i, :], size=20-s_i, color=colrs[s_i],
+    #                    legend='t={0} msec'.format(my_steps[t_i]))
+    #     ip3_fig.line(result_d['node distances'], 1000.0 * result_d['ip3 vals'][t_i, :], line_width=3,
+    #                  color=colrs[s_i])
+    #     ip3r_open_fig.circle(result_d['node distances'], 1e6*result_d['ip3r open vals'][t_i, :], size=20-s_i,
+    #                          color=colrs[s_i], legend='t={0} msec'.format(my_steps[t_i]))
+    #     ip3r_open_fig.line(result_d['node distances'], 1e6*result_d['ip3r open vals'][t_i, :],
+    #                        line_width=3, color=colrs[s_i])
 
     return ret_figs
 
@@ -780,18 +907,20 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001],
     print('Pulse Times: {}'.format(p_times))
     print('Pulse Amps: {}'.format(p_amps_f))
 
-    t_path = os.path.join(os.getcwd(), 'morphologies', 'mpg141209_A_idA.asc')
+    t_path = join(os.getcwd(), 'morphologies/mpg141209_A_idA.asc')
 
-    cell = ca1p.MyCell(t_path, True, param_dict)
+    cell = ca1p.MyCell(t_path, param_dict)
+    cell.insert_rxd()
 
     if current_dict['amp']:
         t_curr = h.IClamp(cell.somatic[0](0.5))
         t_curr.amp = current_dict['amp']
         t_curr.delay = current_dict['start']
         t_curr.dur = current_dict['dur']
-        print('Current Injection at t = {0} msec, amplitude = {1} nA'.format(current_dict['start'], current_dict['amp']))
+        print(
+            'Current Injection at t = {0} msec, amplitude = {1} nA'.format(current_dict['start'], current_dict['amp']))
 
-    n_nodes = len(cell.ca[cell.cyt].nodes)
+    # n_nodes = len(cell.ca[cell.cyt].nodes)
     apical_trunk_inds = [0, 8, 9, 11, 13, 19]
     sec_list = [sec for sec in cell.somatic] + [cell.apical[i] for i in apical_trunk_inds]
     apic_names = ['apical_{0}'.format(num) for num in apical_trunk_inds]
@@ -863,13 +992,15 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001],
     s_ip3 = h.Vector().record(cell.ip3.nodes(cell.somatic[0])[0]._ref_concentration)
     a0_ip3 = h.Vector().record(cell.ip3.nodes(cell.apical[0])[0]._ref_concentration)
     a9_ip3 = h.Vector().record(cell.ip3.nodes(cell.apical[9])[0]._ref_concentration)
-    s_ri = h.Vector().record(cell.ri_ip3r.nodes(cell.somatic[0])[0]._ref_concentration)
-    a0_ri = h.Vector().record(cell.ri_ip3r.nodes(cell.apical[0])[0]._ref_concentration)
-    a9_ri = h.Vector().record(cell.ri_ip3r.nodes(cell.apical[9])[0]._ref_concentration)
 
-    s_po = h.Vector().record(cell.x10_ip3r.nodes(cell.somatic[0])[0]._ref_concentration)
-    a0_po = h.Vector().record(cell.x10_ip3r.nodes(cell.apical[0])[0]._ref_concentration)
-    a9_po = h.Vector().record(cell.x10_ip3r.nodes(cell.apical[9])[0]._ref_concentration)
+    # For Doi et al., 2005
+    s_po = h.Vector().record(cell.ro_ip3r.nodes(cell.somatic[0])[0]._ref_concentration)
+    a0_po = h.Vector().record(cell.ro_ip3r.nodes(cell.apical[0])[0]._ref_concentration)
+    a9_po = h.Vector().record(cell.ro_ip3r.nodes(cell.apical[9])[0]._ref_concentration)
+    # For Bicknell and Goodhill, 2016
+    # s_po = h.Vector().record(cell.x10_ip3r.nodes(cell.somatic[0])[0]._ref_concentration)
+    # a0_po = h.Vector().record(cell.x10_ip3r.nodes(cell.apical[0])[0]._ref_concentration)
+    # a9_po = h.Vector().record(cell.x10_ip3r.nodes(cell.apical[9])[0]._ref_concentration)
 
     s_ip5p = h.Vector().record(cell.ip5p.nodes(cell.somatic[0])[0]._ref_concentration)
     s_ip5p_ip3 = h.Vector().record(cell.ip5p_ip3.nodes(cell.somatic[0])[0]._ref_concentration)
@@ -905,7 +1036,7 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001],
 
         if t_step in p_times:
             p_i = p_times.index(t_step)
-            print('time: {0}, [ACh]: {1} {2}M'.format(t_step, p_amps_f[p_i]*1000.0, mu))
+            print('time: {0}, [ACh]: {1} {2}M'.format(t_step, p_amps_f[p_i] * 1000.0, mu))
 
             cell.ach.nodes(cell.cyt).concentration = p_amps_f[p_i]
 
@@ -913,6 +1044,10 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001],
 
     res_dict = {'node names': node_locs,
                 'node distances': node_dists,
+                # 'ip3 vals': ip3_vals,
+                # 'cyt vals': cyt_vals,
+                # 'er vals': er_vals,
+                # 'ip3r open vals': ip3r_open_vals,
                 'soma_v': np.array(s_v),
                 'apical0_v': np.array(a0_v),
                 'apical9_v': np.array(a9_v),
@@ -926,9 +1061,6 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001],
                 'soma_ip3': np.array(s_ip3),
                 'apical0_ip3': np.array(a0_ip3),
                 'apical9_ip3': np.array(a9_ip3),
-                'soma_ip3r_ri': np.array(s_ri),
-                'apical0_ip3r_ri': np.array(a0_ri),
-                'apical9_ip3r_ri': np.array(a9_ri),
                 'soma_ip3r_open_probability': np.array(s_po),
                 'apical0_ip3r_open_probability': np.array(a0_po),
                 'apical9_ip3r_open_probability': np.array(a9_po),
@@ -965,6 +1097,8 @@ def run_ach_pulse(t_steps, param_dict={}, pulse_times=[50], pulse_amps=[0.001],
                 'soma_ip3k': np.array(s_ip3k),
                 'soma_ip3k_2ca': np.array(s_ip3k_2ca),
                 'soma_ip3k_2ca_ip3': np.array(s_ip3k_2ca_ip3),
+                # 'soma dumb1': np.array(s_d1),
+                # 'soma dumb2': np.array(s_d2),
                 't': np.array(t_vec),
                 }
     return res_dict
@@ -1032,20 +1166,19 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
     t_ig = result_dict['t'][t_bool] - t_ignore
 
     if sp_times.size > 3:
-
-        isr_fig = bplt.figure(title='Instantaneous Spiking Rate vs Time', x_range=[t_ig[0], t_ig[-1]])
+        isr_fig = bplt.figure(title='Instantaneous Firing Rate vs Time', x_range=[t_ig[0], t_ig[-1]])
         isr_fig.xaxis.axis_label = 'time (msec)'
-        isr_fig.yaxis.axis_label = 'ISR (Hz)'
+        isr_fig.yaxis.axis_label = 'IFR (Hz)'
         ret_figs.append(isr_fig)
 
         isr = np.diff(sp_times)
         isr_vals = np.divide(1000.0, isr)
-        isr_ts = (sp_times[:-1] + sp_times[1:])/2.0
+        isr_ts = (sp_times[:-1] + sp_times[1:]) / 2.0
 
         isr_is = np.where(isr_ts > t_ignore)
 
-        isr_fig.circle(isr_ts[isr_is]-t_ignore, isr_vals[isr_is], size=12, color=colrs[0], legend='Simulation Result')
-        isr_fig.line(isr_ts[isr_is]-t_ignore, isr_vals[isr_is], line_width=3, color=colrs[0])
+        isr_fig.circle(isr_ts[isr_is] - t_ignore, isr_vals[isr_is], size=12, color=colrs[0])
+        isr_fig.line(isr_ts[isr_is] - t_ignore, isr_vals[isr_is], line_width=3, color=colrs[0])
 
         label_source = bmod.ColumnDataSource(dict(x=[ach_times[0] + 2000], y=[8],
                                                   text=['cessation = {0:.2f} (msec)'.format(np.max(isr))]))
@@ -1061,7 +1194,7 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
         pre_avg_isr = np.mean(pre_isr)
         post_isr = isr_vals[np.where(isr_ts > ach_times[0])]
 
-        acc_vals = (post_isr - pre_avg_isr)/pre_avg_isr*100.0
+        acc_vals = (post_isr - pre_avg_isr) / pre_avg_isr * 100.0
         acc_ts = isr_ts[np.where(isr_ts > ach_times[0])]
 
         peak_i = np.argmax(acc_vals)
@@ -1074,36 +1207,46 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
 
         acc_fig.line(acc_ts - t_ignore, est_vals, line_width=3, color='green', legend='Linear Regression')
 
-        lable_source = bmod.ColumnDataSource(dict(x=[ach_times[0]+3000], y=[0],
-                                                text=[
-                                                    'slope = {0:.2f} (%/sec)\n r = {1:.2f}'.format(acc_slope*1000.0, r_val)]))
+        lable_source = bmod.ColumnDataSource(dict(x=[ach_times[0] + 3000], y=[0],
+                                                  text=[
+                                                      'slope = {0:.2f} (%/sec)\n r = {1:.2f}'.format(acc_slope * 1000.0,
+                                                                                                     r_val)]))
         reg_label = bmod.glyphs.Text(x='x', y='y', text='text', text_color='green')
         acc_fig.add_glyph(lable_source, reg_label)
 
     ach_spans = []
 
     for ach_time in ach_times:
-        ach_spans.append(bmod.Span(location=ach_time-t_ignore, dimension='height',
+        ach_spans.append(bmod.Span(location=ach_time - t_ignore, dimension='height',
                                    line_color='green', line_dash='dashed', line_width=3)
                          )
 
-    cyt_t_fig.line(t_ig, result_dict['apical9_cyt'][t_bool] * 1000.0, line_width=3, color=colrs[2],
-                   legend='apical[9]')
-    cyt_t_fig.line(t_ig, result_dict['apical0_cyt'][t_bool] * 1000.0, line_width=3, color=colrs[0],
-                   legend='apical[0]')
+    # cyt_t_fig.line(t_ig, result_dict['apical9_cyt'][t_bool] * 1000.0, line_width=3, color=colrs[2],
+    #                legend='apical[9]')
+    # cyt_t_fig.line(t_ig, result_dict['apical0_cyt'][t_bool] * 1000.0, line_width=3, color=colrs[0],
+    #                legend='apical[0]')
     cyt_t_fig.line(t_ig, result_dict['soma_cyt'][t_bool] * 1000.0, line_width=3, color='black')
 
-    for ach_sp in ach_spans:
-        cyt_t_fig.add_layout(ach_sp)
+    ach_span_c1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    ach_span_c2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    cyt_t_fig.add_layout(ach_span_c1)
+    cyt_t_fig.add_layout(ach_span_c2)
 
     er_t_fig.line(t_ig, result_dict['soma_er'][t_bool] * 1000.0, line_width=3, color='black', legend='somatic[0]')
     er_t_fig.line(t_ig, result_dict['apical0_er'][t_bool] * 1000.0, line_width=3, color=colrs[0], legend='apical[0]')
     er_t_fig.line(t_ig, result_dict['apical9_er'][t_bool] * 1000.0, line_width=3, color=colrs[2], legend='apical[9]')
 
-    for ach_sp in ach_spans:
-        er_t_fig.add_layout(ach_sp)
+    ach_span_er1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                             line_dash='dashed', line_width=3)
+    ach_span_er2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                             line_dash='dashed', line_width=3)
+    er_t_fig.add_layout(ach_span_er1)
+    er_t_fig.add_layout(ach_span_er2)
 
-    ach_t_fig.line(t_ig, result_dict['soma_ach'][t_bool]*1000.0, line_width=3, color='green', legend='somatic[0](0.5)')
+    ach_t_fig.line(t_ig, result_dict['soma_ach'][t_bool] * 1000.0, line_width=3, color='green',
+                   legend='somatic[0](0.5)')
 
     m1_t_fig.line(t_ig, result_dict['soma_r'][t_bool], line_width=3, color=colrs[0], legend='R')
     m1_t_fig.line(t_ig, result_dict['soma_g'][t_bool], line_width=3, color=colrs[2], legend='G')
@@ -1113,23 +1256,44 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
     m1_t_fig.line(t_ig, result_dict['soma_rl'][t_bool], line_width=3, color=colrs[6], legend='RL')
     m1_t_fig.line(t_ig, result_dict['soma_rlg'][t_bool], line_width=3, color=colrs[7], legend='RLG')
 
-    for ach_sp in ach_spans:
-        m1_t_fig.add_layout(ach_sp)
+    ach_span_m1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    ach_span_m2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    m1_t_fig.add_layout(ach_span_m1)
+    m1_t_fig.add_layout(ach_span_m2)
 
     act_plc_t_fig.line(t_ig, result_dict['soma_rlg'][t_bool], line_width=3, color=colrs[4], legend='RLG')
     act_plc_t_fig.line(t_ig, result_dict['soma_ga_gtp'][t_bool], line_width=3, color=colrs[0],
                        legend='ga-gtp')
+    # act_plc_t_fig.line(t_ig, result_d['soma plc'], line_width=3, color=colrs[1], legend='plc')
     act_plc_t_fig.line(t_ig, result_dict['soma_active_plc'][t_bool], line_width=3, color=colrs[2], legend='ga-gtp-plc')
 
-    for ach_sp in ach_spans:
-        act_plc_t_fig.add_layout(ach_sp)
+    ach_span_p1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    ach_span_p2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    act_plc_t_fig.add_layout(ach_span_p1)
+    act_plc_t_fig.add_layout(ach_span_p2)
 
     pip2_t_fig.line(t_ig, result_dict['soma_pip2'][t_bool], line_width=3, color=colrs[0], legend='Somatic PIP2')
-    pip2_t_fig.line(t_ig, result_dict['soma_pip2_bound'][t_bool], line_width=3, color=colrs[5], legend='Somatic PIP2 bound')
+    pip2_t_fig.line(t_ig, result_dict['soma_pip2_bound'][t_bool], line_width=3, color=colrs[5],
+                    legend='Somatic PIP2 bound')
+    # pip2_t_fig.line(t_ig, result_dict['apical0_pip2'], line_width=3, color=colrs[1], legend='Proximal Apical PIP2')
+    # pip2_t_fig.line(t_ig, result_dict['apical9_pip2'], line_width=3, color=colrs[2], legend='Distal Apical PIP2')
+    pip2_t_fig.line(t_ig, result_dict['axon_pip2'][t_bool], line_width=3, color=colrs[3], legend='Axonal PIP2',
+                    line_dash='dashed')
+    pip2_t_fig.line(t_ig, result_dict['axon_pip2_bound'][t_bool], line_width=3, color=colrs[6],
+                    legend='Axonal PIP2 bound',
+                    line_dash='dashed')
     pip2_t_fig.line(t_ig, result_dict['soma_pi4p'][t_bool], line_width=3, color=colrs[4], legend='somatic[0](0.5) PI4P')
 
-    for ach_sp in ach_spans:
-        pip2_t_fig.add_layout(ach_sp)
+    ach_span_pi1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                             line_dash='dashed', line_width=3)
+    ach_span_pi2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                             line_dash='dashed', line_width=3)
+    pip2_t_fig.add_layout(ach_span_pi1)
+    pip2_t_fig.add_layout(ach_span_pi2)
 
     k_PLC = 0.3  # 0.0003  # (um^2 msec^-1) dropped by a fact
     k_4K = 0.0008 * 2  # 0.0000008  # (msec^-1)
@@ -1137,14 +1301,16 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
     k_5K = 0.02  # 0.00002  # (msec^-1)
     k_5P = 0.028  # 0.000028  # (msec^-1)
 
-    pi_flux_fig.line(t_ig, result_dict['soma_pi'][t_bool]*k_4K,line_width=3, color=colrs[0], legend='somatic[0](0.5) PI->PI4P')
+    pi_flux_fig.line(t_ig, result_dict['soma_pi'][t_bool] * k_4K, line_width=3, color=colrs[0],
+                     legend='somatic[0](0.5) PI->PI4P')
     pi_flux_fig.line(t_ig, result_dict['soma_pi4p'][t_bool] * k_4P, line_width=3, color=colrs[1],
                      legend='somatic[0](0.5) PI4P->PI')
     pi_flux_fig.line(t_ig, result_dict['soma_pi4p'][t_bool] * k_5K, line_width=3, color=colrs[2],
                      legend='somatic[0](0.5) PI4P->PIP2')
     pi_flux_fig.line(t_ig, result_dict['soma_pip2'][t_bool] * k_5P, line_width=3, color=colrs[3],
                      legend='somatic[0](0.5) PIP2->PI4P')
-    pi_flux_fig.line(t_ig, result_dict['soma_active_plc'][t_bool]*result_dict['soma_pip2'][t_bool]*k_PLC*3, line_width=3,
+    pi_flux_fig.line(t_ig, result_dict['soma_active_plc'][t_bool] * result_dict['soma_pip2'][t_bool] * k_PLC * 3,
+                     line_width=3,
                      color=colrs[4], legend='somatic[0](0.5) PIP2->DAG+IP3')
 
     # ip3_t_fig.line(t_ig, dip3, line_width=3, color=colrs[0], legend='somatic[0] flux')
@@ -1153,18 +1319,33 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
                    legend='apical[0]')
     ip3_t_fig.line(t_ig, result_dict['apical9_ip3'][t_bool] * 1000.0, line_width=3, color=colrs[2],
                    legend='apical[9]')
-    for ach_sp in ach_spans:
-        ip3_t_fig.add_layout(ach_sp)
 
-    ip3r_open_t_fig.line(t_ig, 100*result_dict['soma_ip3r_open_probability'][t_bool], line_width=3, color='black',
+    ach_span_ip1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                             line_dash='dashed', line_width=3)
+    ach_span_ip2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                             line_dash='dashed', line_width=3)
+    ip3_t_fig.add_layout(ach_span_ip1)
+    ip3_t_fig.add_layout(ach_span_ip2)
+
+    ip3r_open_t_fig.line(t_ig, 100 * result_dict['soma_ip3r_open_probability'][t_bool], line_width=3, color='black',
                          legend='somatic[0]')
-    ip3r_open_t_fig.line(t_ig, 100*result_dict['apical0_ip3r_open_probability'][t_bool], line_width=3, color=colrs[0],
+    # ip3r_open_t_fig.line(t_ig, 100*result_dict['soma_ip3r_ri'], line_width=3, color='black',
+    #                      legend='somatic[0] ri', line_dash='dashed')
+    ip3r_open_t_fig.line(t_ig, 100 * result_dict['apical0_ip3r_open_probability'][t_bool], line_width=3, color=colrs[0],
                          legend='apical[0]')
-    ip3r_open_t_fig.line(t_ig, 100*result_dict['apical9_ip3r_open_probability'][t_bool], line_width=3, color=colrs[1],
+    # ip3r_open_t_fig.line(t_ig, 100 * result_dict['apical0_ip3r_ri'], line_width=3, color=colrs[0],
+    #                      legend='apical[0] ri', line_dash='dashed')
+    ip3r_open_t_fig.line(t_ig, 100 * result_dict['apical9_ip3r_open_probability'][t_bool], line_width=3, color=colrs[1],
                          legend='apical[9]')
+    # ip3r_open_t_fig.line(t_ig, 100 * result_dict['apical9_ip3r_ri'], line_width=3, color=colrs[1],
+    #                      legend='apical[9] ri', line_dash='dashed')
 
-    for ach_sp in ach_spans:
-        ip3r_open_t_fig.add_layout(ach_sp)
+    ach_span_ipr1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                              line_dash='dashed', line_width=3)
+    ach_span_ipr2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                              line_dash='dashed', line_width=3)
+    ip3r_open_t_fig.add_layout(ach_span_ipr1)
+    ip3r_open_t_fig.add_layout(ach_span_ipr2)
 
     ip3_kinase_fig.line(t_ig, 1000.0 * result_dict['soma_ip5p'][t_bool],
                         line_width=3, color=colrs[0], legend='ip5p')
@@ -1173,30 +1354,89 @@ def plot_ach_pulse(result_dict, t_is=[0, -1], ach_times=[100, 150], t_ignore=0):
     ip3_kinase_fig.line(t_ig, 1000.0 * result_dict['soma_ip3k'][t_bool],
                         line_width=3, color=colrs[2], legend='ip3k')
     ip3_kinase_fig.line(t_ig, 1000.0 * result_dict['soma_ip3k_2ca'][t_bool],
-                        line_width=3, line_dash='dashed',color=colrs[3], legend='ip3k_2ca')
+                        line_width=3, line_dash='dashed', color=colrs[3], legend='ip3k_2ca')
     ip3_kinase_fig.line(t_ig, 1000.0 * result_dict['soma_ip3k_2ca_ip3'][t_bool],
                         line_width=3, line_dash='dotted', color=colrs[4], legend='ip3k_2ca_ip3')
 
-    pip2_kcnq_t_fig.line(t_ig, 100.0*result_dict['soma_perc_i'][t_bool], line_width=3, color=colrs[0], legend='somatic[0](0.5)')
+    pip2_kcnq_t_fig.line(t_ig, 100.0 * result_dict['soma_perc_i'][t_bool], line_width=3, color=colrs[0],
+                         legend='somatic[0](0.5)')
     pip2_kcnq_t_fig.line(t_ig, 100.0 * result_dict['axon_perc_i'][t_bool], line_width=3, color=colrs[2],
                          legend='axon[0](0.5)')
-    for ach_sp in ach_spans:
-        pip2_kcnq_t_fig.add_layout(ach_sp)
+    ach_span_pk1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                             line_dash='dashed', line_width=3)
+    ach_span_pk2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                             line_dash='dashed', line_width=3)
+    pip2_kcnq_t_fig.add_layout(ach_span_pk1)
+    pip2_kcnq_t_fig.add_layout(ach_span_pk2)
 
-    ik_t_fig.line(t_ig, result_dict['soma_im'][t_bool], line_width=3, color='black', legend='Soma Im', line_dash='dashed')
+    ik_t_fig.line(t_ig, result_dict['soma_im'][t_bool], line_width=3, color='black', legend='Soma Im',
+                  line_dash='dashed')
+    # ik_t_fig.line(t_ig, result_d['axon im'][i_ig], line_width=3, color=colrs[2], legend='axonal[0]')
 
     ik_t_fig.line(t_ig, result_dict['apical9_isk'][t_bool], line_width=3, color=colrs[2],
-                   legend='apical[9] Isk')
+                  legend='apical[9] Isk')
     ik_t_fig.line(t_ig, result_dict['apical0_isk'][t_bool], line_width=3, color=colrs[0],
-                   legend='apical[0] Isk')
+                  legend='apical[0] Isk')
     ik_t_fig.line(t_ig, result_dict['soma_isk'][t_bool], line_width=3, color='black', legend='Soma Isk')
-    for ach_sp in ach_spans:
-        ik_t_fig.add_layout(ach_sp)
+
+    ach_span_ik1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                             line_dash='dashed', line_width=3)
+    ach_span_ik2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                             line_dash='dashed', line_width=3)
+    ik_t_fig.add_layout(ach_span_ik1)
+    ik_t_fig.add_layout(ach_span_ik2)
 
     v_fig.line(t_ig, result_dict['soma_v'][t_bool], line_width=3, color='black')
-    for ach_sp in ach_spans:
-        v_fig.add_layout(ach_sp)
+    # v_fig.line(t_ig, result_d['apical0 v'][i_ig], line_width=3, color=colrs[0], legend='apical[0](0.5)',
+    #            line_dash='dashed')
+    # v_fig.line(t_ig, result_d['apical9 v'][i_ig], line_width=3, color=colrs[2], legend='apical[9](0.5)',
+    #            line_dash='dotted')
+    # v_fig.line(t_ig, result_dict['axon_v'][t_bool], line_width=3, color=colrs[3], legend='axonal[0](0.5)',
+    #            line_dash='dotted')
+    ach_span_v1 = bmod.Span(location=ach_times[0] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    ach_span_v2 = bmod.Span(location=ach_times[1] - t_ignore, dimension='height', line_color='green',
+                            line_dash='dashed', line_width=3)
+    v_fig.add_layout(ach_span_v1)
+    v_fig.add_layout(ach_span_v2)
+
     v_fig.legend.location = 'bottom_right'
+
+    # dumb_fig.line(result_d['t'], result_d['soma dumb1'], line_width=3, color=colrs[0], legend='density')
+    # dumb_fig.line(result_d['t'], result_d['soma dumb2'], line_width=3, color=colrs[2], legend='concentration')
+
+    # cal_fig = bplt.figure(title='Cytosol Calcium vs Location')
+    # cal_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
+    # ret_figs.append(cal_fig)
+    # er_fig = bplt.figure(title='ER Calcium vs Location')
+    # er_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
+    # ret_figs.append(er_fig)
+    # ip3_fig = bplt.figure(title='IP3 vs Location')
+    # ip3_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
+    # ret_figs.append(ip3_fig)
+    # ip3r_open_fig = bplt.figure(title='Open IP3R vs Location')
+    # ip3r_open_fig.xaxis.axis_label = 'distance from soma ({}m)'.format(mu)
+    # ret_figs.append(ip3r_open_fig)
+    #
+    # for s_i, t_i in enumerate(t_is):
+    #     cal_fig.circle(result_d['node distances'], 1000.0 * result_d['cyt vals'][t_i, :], size=20 - s_i,
+    #                    color=colrs[s_i],
+    #                    legend='t={0} msec'.format(my_steps[t_i]))
+    #     cal_fig.line(result_d['node distances'], 1000.0 * result_d['cyt vals'][t_i, :], line_width=3,
+    #                  color=colrs[s_i])
+    #     er_fig.circle(result_d['node distances'], 1000.0 * result_d['er vals'][t_i, :], size=20 - s_i, color=colrs[s_i],
+    #                   legend='t={0} msec'.format(my_steps[t_i]))
+    #     er_fig.line(result_d['node distances'], 1000.0 * result_d['er vals'][t_i, :], line_width=3,
+    #                 color=colrs[s_i])
+    #     ip3_fig.circle(result_d['node distances'], 1000.0 * result_d['ip3 vals'][t_i, :], size=20 - s_i,
+    #                    color=colrs[s_i],
+    #                    legend='t={0} msec'.format(my_steps[t_i]))
+    #     ip3_fig.line(result_d['node distances'], 1000.0 * result_d['ip3 vals'][t_i, :], line_width=3,
+    #                  color=colrs[s_i])
+    #     ip3r_open_fig.circle(result_d['node distances'], 1e6 * result_d['ip3r open vals'][t_i, :], size=20 - s_i,
+    #                          color=colrs[s_i], legend='t={0} msec'.format(my_steps[t_i]))
+    #     ip3r_open_fig.line(result_d['node distances'], 1e6 * result_d['ip3r open vals'][t_i, :],
+    #                        line_width=3, color=colrs[s_i])
 
     return ret_figs
 
@@ -1219,9 +1459,9 @@ def add_dasari_isr_data(in_fig):
                            9.2091481041, 9.308961061, 9.4517939126, 9.566230233, 9.7233463697, 9.8949158306,
                            9.9948988267, 10.1379017174, 10.3093011393])
 
-    das_t = das_spikes*1000.0
+    das_t = das_spikes * 1000.0
     das_isr = np.divide(1000.0, np.diff(das_t))
-    das_ints = (das_t[:-1] + das_t[1:])/2.0
+    das_ints = (das_t[:-1] + das_t[1:]) / 2.0
 
     in_fig.circle(das_ints, das_isr, size=12, color=colrs[2], legend='Dasari Data')
     in_fig.line(das_ints, das_isr, line_width=3, color=colrs[2])
@@ -1233,28 +1473,31 @@ def plot_dasari_and_gulledge_data():
     mV_span = bmod.Span(location=-70.0, dimension='width', line_color='grey',
                         line_dash='dashed', line_width=3)
 
-    dg_fig1a2_rmp = np.array([[-3.69, 5.16],[-3.55, 4.82],[-3.39, 5.64],[-3.35, 4.71],[-3.16, 5.04],[-3.12, 5.62],
-                              [-3.06, 4.69],[-3.01, 5.16],[-2.97, 4.98],[-2.91, 5.53],[-2.85, 5.37],[-2.79, 5.60],
-                              [-2.76, 5.23],[-2.67, 5.99],[-2.59, 8.63],[-2.52, 6.93],[-2.43, 5.90],[-2.39, 4.77],
-                              [-2.36, 3.87],[-2.31, 2.89],[-2.28, 1.84],[-2.25, 1.34],[-2.20, 1.43],[-2.13, 1.30],
-                              [-2.07, 1.28],[-2.00, 1.06],[-1.95, 1.96],[-1.88, 1.82],[-1.79, 2.35],[-1.71, 2.82],
-                              [-1.63, 3.01],[-1.59, 3.48],[-1.57, 3.25],[-1.53, 3.97],[-1.48, 4.18],[-1.43, 4.51],
-                              [-1.39, 5.00],[-1.34, 5.47],[-1.31, 5.92],[-1.28, 5.37],[-1.25, 6.25],[-1.19, 6.42],
-                              [-1.14, 6.60],[-1.12, 6.21],[-1.07, 7.67],[-1.04, 7.46],[-0.987, 8.02],[-0.943, 8.26],
-                              [-0.911, 8.06],[-0.871, 8.31],[-0.813, 7.98],[-0.776, 7.24],[-0.723, 7.92],[-0.665, 8.57],
-                              [-0.598, 8.16],[-0.546, 7.73],[-0.477, 7.63],[-0.445, 8.22],[-0.378, 8.31],[-0.318, 7.14],
-                              [-0.256, 7.90],[-0.189, 8.39],[-0.126, 8.24],[-0.0856, 7.63],[0.00142, 7.69],
-                              [0.0826, 7.77],[0.135, 7.83],[0.170, 8.45],[0.210, 7.67],[0.282, 7.24],[0.353, 8.31],
-                              [0.460, 7.94],[0.492, 8.78],[0.555, 7.98],[0.608, 8.53],[0.662, 7.90],[0.749, 7.65],
-                              [0.790, 8.26],[0.845, 7.71],[0.912, 7.69],[0.958, 8.43],[1.01, 8.12],[1.07, 7.36],
-                              [1.11, 8.06],[1.20, 7.48],[1.27, 8.26],[1.34, 7.75],[1.40, 7.73],[1.44, 7.24],
-                              [1.51, 7.79],[1.58, 7.98],[1.62, 8.24],[1.67, 8.02],[1.73, 7.85],[1.79, 7.69],
+    dg_fig1a2_rmp = np.array([[-3.69, 5.16], [-3.55, 4.82], [-3.39, 5.64], [-3.35, 4.71], [-3.16, 5.04], [-3.12, 5.62],
+                              [-3.06, 4.69], [-3.01, 5.16], [-2.97, 4.98], [-2.91, 5.53], [-2.85, 5.37], [-2.79, 5.60],
+                              [-2.76, 5.23], [-2.67, 5.99], [-2.59, 8.63], [-2.52, 6.93], [-2.43, 5.90], [-2.39, 4.77],
+                              [-2.36, 3.87], [-2.31, 2.89], [-2.28, 1.84], [-2.25, 1.34], [-2.20, 1.43], [-2.13, 1.30],
+                              [-2.07, 1.28], [-2.00, 1.06], [-1.95, 1.96], [-1.88, 1.82], [-1.79, 2.35], [-1.71, 2.82],
+                              [-1.63, 3.01], [-1.59, 3.48], [-1.57, 3.25], [-1.53, 3.97], [-1.48, 4.18], [-1.43, 4.51],
+                              [-1.39, 5.00], [-1.34, 5.47], [-1.31, 5.92], [-1.28, 5.37], [-1.25, 6.25], [-1.19, 6.42],
+                              [-1.14, 6.60], [-1.12, 6.21], [-1.07, 7.67], [-1.04, 7.46], [-0.987, 8.02],
+                              [-0.943, 8.26],
+                              [-0.911, 8.06], [-0.871, 8.31], [-0.813, 7.98], [-0.776, 7.24], [-0.723, 7.92],
+                              [-0.665, 8.57],
+                              [-0.598, 8.16], [-0.546, 7.73], [-0.477, 7.63], [-0.445, 8.22], [-0.378, 8.31],
+                              [-0.318, 7.14],
+                              [-0.256, 7.90], [-0.189, 8.39], [-0.126, 8.24], [-0.0856, 7.63], [0.00142, 7.69],
+                              [0.0826, 7.77], [0.135, 7.83], [0.170, 8.45], [0.210, 7.67], [0.282, 7.24], [0.353, 8.31],
+                              [0.460, 7.94], [0.492, 8.78], [0.555, 7.98], [0.608, 8.53], [0.662, 7.90], [0.749, 7.65],
+                              [0.790, 8.26], [0.845, 7.71], [0.912, 7.69], [0.958, 8.43], [1.01, 8.12], [1.07, 7.36],
+                              [1.11, 8.06], [1.20, 7.48], [1.27, 8.26], [1.34, 7.75], [1.40, 7.73], [1.44, 7.24],
+                              [1.51, 7.79], [1.58, 7.98], [1.62, 8.24], [1.67, 8.02], [1.73, 7.85], [1.79, 7.69],
                               [1.83, 7.67]])
 
     dg_fig1a2_t = (dg_fig1a2_rmp[:, 0] - dg_fig1a2_rmp[0, 0]) * 1000.0
     dg_fig1a2_v = dg_fig1a2_rmp[:, 1] - dg_fig1a2_rmp[0, 1] - 70.0
 
-    dg_fig1a2_ach = (np.array([-2.70, -2.66]) - dg_fig1a2_rmp[0,0])*1000.0
+    dg_fig1a2_ach = (np.array([-2.70, -2.66]) - dg_fig1a2_rmp[0, 0]) * 1000.0
 
     ach_span_1 = bmod.Span(location=dg_fig1a2_ach[0], dimension='height', line_color='green',
                            line_dash='dashed', line_width=3)
@@ -1269,20 +1512,21 @@ def plot_dasari_and_gulledge_data():
     dg_figs[-1].add_layout(ach_span_1)
     dg_figs[-1].add_layout(ach_span_2)
 
-    dg_fig2a_rmp = np.array([[-5.43, 1.73],[-5.33, 1.73],[-5.24, 1.60],[-5.09, 1.93],[-4.95, 1.60],[-4.82, 1.93],[-4.80, 2.40],
-                    [-4.65, 1.80],[-4.49, 2.00],[-4.46, 4.07],[-4.41, 1.73],[-4.28, 3.00],[-4.21, 2.20],[-4.00, 2.27],
-                    [-3.92, 1.73],[-3.84, 2.00],[-3.82, 2.80],[-3.63, -1.47],[-3.53, -2.13],[-3.40, -2.20],
-                    [-3.37, -1.40],[-3.33, -2.40],[-3.26, -2.27],[-3.21, -2.40],[-3.04, -2.07],[-2.88, -2.07],
-                    [-2.85, -1.40],[-2.81, -1.87],[-2.65, -1.53],[-2.54, -1.27],[-2.42, -1.13],[-2.29, -0.600],
-                    [-2.20, -0.0667],[-2.08, 0.600],[-1.97, 1.27],[-1.85, 2.00],[-1.72, 2.93],[-1.62, 3.13],
-                    [-1.51, 3.27],[-1.45, 3.60],[-1.29, 3.53],[-1.12, 3.33],[-1.11, 4.73],[-1.02, 3.40],[-0.789, 3.60],
-                    [-0.716, 3.80],[-0.600, 3.80],[-0.326, 3.93],[-0.221, 3.73],[-0.0632, 3.47],[0.0316, 3.87],
-                    [0.0737, 4.73],[0.105, 4.00],[0.189, 3.53],[0.295, 3.87],[0.379, 4.20],[0.400, 5.00],[0.453, 4.20],
-                    [0.547, 4.13]])
-    dg_fig2a_t = (dg_fig2a_rmp[:,0] - dg_fig2a_rmp[0,0])*1000.0
-    dg_fig2a_v = dg_fig2a_rmp[:,1] - dg_fig2a_rmp[0, 1] - 70.0
+    dg_fig2a_rmp = np.array(
+        [[-5.43, 1.73], [-5.33, 1.73], [-5.24, 1.60], [-5.09, 1.93], [-4.95, 1.60], [-4.82, 1.93], [-4.80, 2.40],
+         [-4.65, 1.80], [-4.49, 2.00], [-4.46, 4.07], [-4.41, 1.73], [-4.28, 3.00], [-4.21, 2.20], [-4.00, 2.27],
+         [-3.92, 1.73], [-3.84, 2.00], [-3.82, 2.80], [-3.63, -1.47], [-3.53, -2.13], [-3.40, -2.20],
+         [-3.37, -1.40], [-3.33, -2.40], [-3.26, -2.27], [-3.21, -2.40], [-3.04, -2.07], [-2.88, -2.07],
+         [-2.85, -1.40], [-2.81, -1.87], [-2.65, -1.53], [-2.54, -1.27], [-2.42, -1.13], [-2.29, -0.600],
+         [-2.20, -0.0667], [-2.08, 0.600], [-1.97, 1.27], [-1.85, 2.00], [-1.72, 2.93], [-1.62, 3.13],
+         [-1.51, 3.27], [-1.45, 3.60], [-1.29, 3.53], [-1.12, 3.33], [-1.11, 4.73], [-1.02, 3.40], [-0.789, 3.60],
+         [-0.716, 3.80], [-0.600, 3.80], [-0.326, 3.93], [-0.221, 3.73], [-0.0632, 3.47], [0.0316, 3.87],
+         [0.0737, 4.73], [0.105, 4.00], [0.189, 3.53], [0.295, 3.87], [0.379, 4.20], [0.400, 5.00], [0.453, 4.20],
+         [0.547, 4.13]])
+    dg_fig2a_t = (dg_fig2a_rmp[:, 0] - dg_fig2a_rmp[0, 0]) * 1000.0
+    dg_fig2a_v = dg_fig2a_rmp[:, 1] - dg_fig2a_rmp[0, 1] - 70.0
 
-    dg_fig2a_ach = (np.array([-4.35, -4.31]) - dg_fig2a_rmp[0,0])*1000.0
+    dg_fig2a_ach = (np.array([-4.35, -4.31]) - dg_fig2a_rmp[0, 0]) * 1000.0
 
     ach_span_3 = bmod.Span(location=dg_fig2a_ach[0], dimension='height', line_color='green',
                            line_dash='dashed', line_width=3)
@@ -1291,8 +1535,8 @@ def plot_dasari_and_gulledge_data():
 
     dg_figs.append(bplt.figure(title='Dasari and Gulledge Fig 2A '))
     dg_figs[-1].line(dg_fig2a_t, dg_fig2a_v, line_width=3, color='blue', legend='soma')
-    dg_figs[-1].xaxis.axis_label='time (msec)'
-    dg_figs[-1].yaxis.axis_label='membrane potential (mV)'
+    dg_figs[-1].xaxis.axis_label = 'time (msec)'
+    dg_figs[-1].yaxis.axis_label = 'membrane potential (mV)'
     dg_figs[-1].add_layout(ach_span_3)
     dg_figs[-1].add_layout(ach_span_4)
     dg_figs[-1].add_layout(mV_span)
@@ -1305,13 +1549,13 @@ def ode_m1(species, t, k_f, k_r):
     species = ['R', 'L', 'RL']
     """
 
-    r1 = species[0]*species[1] * k_f - species[2] * k_r
+    r1 = species[0] * species[1] * k_f - species[2] * k_r
 
     return [-r1, 0, r1]
 
 
 def sig_func(x, k, x0):
-    return 1.0/(1.0 + np.exp(-k*(x - x0)))
+    return 1.0 / (1.0 + np.exp(-k * (x - x0)))
 
 
 def run_m1_activation_oxom_vs_ach(conc_vals, t_sim_end=5000):
@@ -1367,12 +1611,11 @@ def run_m1_activation_oxom_vs_ach(conc_vals, t_sim_end=5000):
 
 
 def plot_m1_activation_oxom_vs_ach(res_dict):
-
     conc_vals = res_dict['concentrations']
     ach_vals = res_dict['ACh final values']
-    ach_norm = ach_vals/np.max(ach_vals)
+    ach_norm = ach_vals / np.max(ach_vals)
     oxom_vals = res_dict['Oxom final values']
-    oxom_norm = oxom_vals/np.max(oxom_vals)
+    oxom_norm = oxom_vals / np.max(oxom_vals)
 
     # Estimate sigmoidal curves to fit response
 
@@ -1385,8 +1628,8 @@ def plot_m1_activation_oxom_vs_ach(res_dict):
     oxom_opt, _ = spopt.curve_fit(sig_func, conc_log, oxom_norm)
     print('Oxom\nk = {0}\nE50 = {1}'.format(oxom_opt[0], oxom_opt[1]))
 
-    ach_ec50 = 10**ach_opt[1]
-    oxom_ec50 = 10**oxom_opt[1]
+    ach_ec50 = 10 ** ach_opt[1]
+    oxom_ec50 = 10 ** oxom_opt[1]
 
     # Plot values vs time
     ach_est = sig_func(np.log10(l_concs), ach_opt[0], ach_opt[1])
@@ -1408,38 +1651,211 @@ def plot_m1_activation_oxom_vs_ach(res_dict):
     conc_fig.xaxis.axis_label = 'Agonist Concentration ({}M)'.format(mu)
     conc_fig.yaxis.axis_label = 'Percent Bound (%)'
 
-    conc_fig.circle(conc_vals, oxom_norm*100.0, size=12, color='blue', legend='Oxo-M Parameters')
-    conc_fig.circle(conc_vals, ach_norm*100.0, size=12, color='green', legend='ACh Parameters')
+    conc_fig.circle(conc_vals, oxom_norm * 100.0, size=12, color='blue', legend='Oxo-M Parameters')
+    conc_fig.circle(conc_vals, ach_norm * 100.0, size=12, color='green', legend='ACh Parameters')
     conc_fig.legend.location = 'bottom_right'
 
-    conc_fig.line(l_concs, oxom_est*100.0, line_width=3, color='blue', legend='Oxo-M Fit, EC50={0:.3f}'.format(oxom_ec50))
-    conc_fig.line(l_concs, ach_est*100.0, line_width=3, color='green', legend='ACh Fit, EC50={0:.3f}'.format(ach_ec50))
+    conc_fig.line(l_concs, oxom_est * 100.0, line_width=3, color='blue',
+                  legend='Oxo-M Fit, EC50={0:.3f}'.format(oxom_ec50))
+    conc_fig.line(l_concs, ach_est * 100.0, line_width=3, color='green',
+                  legend='ACh Fit, EC50={0:.3f}'.format(ach_ec50))
     return figs
 
 
-def plot_model_vs_gulledge(in_trace, bio_trace):
+def plot_model_vs_gulledge(model_h5, exp_h5, exp_name, exp_min_time=None, model_t_ignore=None):
+    exp_fig = bplt.figure(title='Experimental Membrane Potential vs Time')
+    exp_fig.xaxis.axis_label = 'time (sec)'
+    exp_fig.yaxis.axis_label = 'potential (mV)'
+    print('Plotting Potential values from {}'.format(exp_h5))
 
-    in_trace = 0
+    model_fig = bplt.figure(title='Model Membrane Potential vs Time')
+    model_fig.xaxis.axis_label = 'time (sec)'
+    model_fig.yaxis.axis_label = 'potential (mV)'
+    print('Plotting Potential values from {}'.format(model_h5))
 
-    v_fig = bplt.figure()
-    acc_fig = bplt.figure()
+    accel_fig = bplt.figure(title='Instantaneous Firing Rate vs Time')
+    accel_fig.xaxis.axis_label = 'time (sec)'
+    accel_fig.yaxis.axis_label = 'IFR (Hz)'
 
-    return [v_fig, acc_fig]
+    with pd.HDFStore(exp_h5) as h5_data:
+
+        name_sort = list(h5_data.keys())
+        name_sort.sort(key=natural_keys)
+
+        for f_name in name_sort:
+            if 'data' in f_name:
+
+                name_parts = f_name.split('/')[1].split('_')
+                leg_name = ' '.join(name_parts[:name_parts.index('CA1')])
+
+                if leg_name == exp_name:
+                    if exp_min_time:
+                        exp_t_arr = h5_data[f_name]['time'].loc[
+                                        h5_data[f_name]['time'] > exp_min_time].to_numpy() - exp_min_time
+                        exp_v_arr = h5_data[f_name]['Potential'].loc[h5_data[f_name]['time'] > exp_min_time].to_numpy()
+                    else:
+                        exp_t_arr = h5_data[f_name]['Potential'].to_numpy()
+                        exp_v_arr = h5_data[f_name]['time'].to_numpy()
+
+                    exp_fig.line(exp_t_arr, 1000.0 * exp_v_arr, line_width=1, color='black')
+
+    with pd.HDFStore(model_h5) as h5_data:
+
+        t_arr = np.array(h5_data['ach_pulse']['t'])
+        v_arr = np.array(h5_data['ach_pulse']['soma_v'])
+        if model_t_ignore:
+
+            t_bool = t_arr > model_t_ignore
+            model_t_arr = t_arr[t_bool] - model_t_ignore
+            model_v_arr = v_arr[t_bool]
+            np.array(h5_data['ach_pulse']['t'])
+        else:
+            model_v_arr = v_arr
+            model_t_arr = t_arr
+
+        model_fig.line(model_t_arr / 1000.0, model_v_arr, line_width=1, color='black')
+
+    exp_sp_times = fan.get_spike_times(exp_v_arr, exp_t_arr)
+    mod_sp_times = fan.get_spike_times(model_v_arr, model_t_arr / 1000.0)
+
+    isi = np.diff(exp_sp_times)
+    exp_isr_vals = np.divide(1.0, isi)
+    exp_isr_ts = (exp_sp_times[:-1] + exp_sp_times[1:]) / 2.0
+
+    isi = np.diff(mod_sp_times)
+    mod_isr_vals = np.divide(1.0, isi)
+    mod_isr_ts = (mod_sp_times[:-1] + mod_sp_times[1:]) / 2.0
+
+    accel_fig.square(exp_isr_ts, exp_isr_vals, size=12, legend='Experimental', color='red', line_dash='dashed')
+    accel_fig.line(exp_isr_ts, exp_isr_vals, line_width=3, color='red', line_dash='dashed')
+
+    accel_fig.circle(mod_isr_ts, mod_isr_vals, size=12, legend='Model', color='black')
+    accel_fig.line(mod_isr_ts, mod_isr_vals, line_width=3, color='black')
+    accel_fig.legend.location = 'bottom_right'
+
+    return exp_fig, model_fig, accel_fig
+
+
+def plot_ip3_and_pip2_different_parameters(original_h5, plc_h5, fast_h5, final_h5,
+                                           t_ig_orig=None, t_ig_plc=None, t_ig_fast=None, t_ig_final=None):
+    plc_fig = bplt.figure(title='Activated PLC vs Time')
+    plc_fig.xaxis.axis_label = 'time (sec)'
+    plc_fig.yaxis.axis_label = 'density ({}m^-2)'
+
+    ip3_fig = bplt.figure(title='IP3 vs Time')
+    ip3_fig.xaxis.axis_label = 'time (sec)'
+    ip3_fig.yaxis.axis_label = 'concentration ({0}M)'.format(mu)
+
+    pip2_fig = bplt.figure(title='PIP2 vs Time')
+    pip2_fig.xaxis.axis_label = 'time (sec)'
+    pip2_fig.yaxis.axis_label = 'density (um^-2)'
+    pip2_fig.legend.location = 'center_right'
+
+    with pd.HDFStore(original_h5) as h5_data:
+
+        t_arr = np.array(h5_data['ach_pulse']['t'])
+        plc_arr = np.array(h5_data['ach_pulse']['soma_active_plc'])
+        ip3_arr = np.array(h5_data['ach_pulse']['soma_ip3'])
+        pip2_arr = np.array(h5_data['ach_pulse']['soma_pip2'])
+
+        if t_ig_orig:
+            t_bool = t_arr > t_ig_orig
+            model_t_arr = t_arr[t_bool] - t_ig_orig
+            plc_arr = plc_arr[t_bool]
+            ip3_arr = ip3_arr[t_bool]
+            pip2_arr = pip2_arr[t_bool]
+
+        plc_fig.line(model_t_arr / 1000.0, plc_arr, line_width=3, color='red', line_dash='dashed',
+                     legend='original parameters')
+        ip3_fig.line(model_t_arr / 1000.0, ip3_arr * 1000.0, line_width=3, color='red', line_dash='dashed',
+                     legend='original parameters')
+        pip2_fig.line(model_t_arr / 1000.0, pip2_arr, line_width=3, color='red', line_dash='dashed',
+                      legend='original parameters')
+
+    with pd.HDFStore(plc_h5) as h5_data:
+
+        t_arr = np.array(h5_data['ach_pulse']['t'])
+        plc_arr = np.array(h5_data['ach_pulse']['soma_active_plc'])
+        ip3_arr = np.array(h5_data['ach_pulse']['soma_ip3'])
+        pip2_arr = np.array(h5_data['ach_pulse']['soma_pip2'])
+
+        if t_ig_plc:
+            t_bool = t_arr > t_ig_plc
+            model_t_arr = t_arr[t_bool] - t_ig_plc
+            plc_arr = plc_arr[t_bool]
+            ip3_arr = ip3_arr[t_bool]
+            pip2_arr = pip2_arr[t_bool]
+
+        plc_fig.line(model_t_arr / 1000.0, plc_arr, line_width=3, color='black',
+                     legend='final parameters')
+        ip3_fig.line(model_t_arr / 1000.0, ip3_arr * 1000.0, line_width=3, color='blue', line_dash='dotdash',
+                     legend='increased PLC activation')
+        pip2_fig.line(model_t_arr / 1000.0, pip2_arr, line_width=3, color='blue', line_dash='dotdash',
+                      legend='increased PLC activation')
+
+    with pd.HDFStore(fast_h5) as h5_data:
+
+        t_arr = np.array(h5_data['ach_pulse']['t'])
+        plc_arr = np.array(h5_data['ach_pulse']['soma_active_plc'])
+        ip3_arr = np.array(h5_data['ach_pulse']['soma_ip3'])
+        pip2_arr = np.array(h5_data['ach_pulse']['soma_pip2'])
+
+        if t_ig_fast:
+            t_bool = t_arr > t_ig_fast
+            model_t_arr = t_arr[t_bool] - t_ig_fast
+            plc_arr = plc_arr[t_bool]
+            ip3_arr = ip3_arr[t_bool]
+            pip2_arr = pip2_arr[t_bool]
+
+        # plc_fig.line(model_t_arr / 1000.0, plc_arr, line_width=3, color='grey', line_dash='dotted',
+        #              legend='increased k_PLC')
+        ip3_fig.line(model_t_arr / 1000.0, ip3_arr * 1000.0, line_width=3, color='black',
+                     legend='final parameters')
+        pip2_fig.line(model_t_arr / 1000.0, pip2_arr, line_width=3, color='grey', line_dash='dotted',
+                      legend='increased k_PLC')
+
+    with pd.HDFStore(final_h5) as h5_data:
+
+        t_arr = np.array(h5_data['ach_pulse']['t'])
+        plc_arr = np.array(h5_data['ach_pulse']['soma_active_plc'])
+        ip3_arr = np.array(h5_data['ach_pulse']['soma_ip3'])
+        pip2_arr = np.array(h5_data['ach_pulse']['soma_pip2'])
+
+        if t_ig_final:
+            t_bool = t_arr > t_ig_final
+            model_t_arr = t_arr[t_bool] - t_ig_final
+            plc_arr = plc_arr[t_bool]
+            ip3_arr = ip3_arr[t_bool]
+            pip2_arr = pip2_arr[t_bool]
+
+        # plc_fig.line(model_t_arr / 1000.0, plc_arr, line_width=3, color='black', legend='final parameters')
+        # ip3_fig.line(model_t_arr / 1000.0, ip3_arr*1000.0, line_width=3, color='black', legend='final parameters')
+        pip2_fig.line(model_t_arr / 1000.0, pip2_arr, line_width=3, color='black', legend='final parameters')
+
+    pip2_fig.legend.location = 'center_right'
+
+    return plc_fig, ip3_fig, pip2_fig
 
 
 if __name__ == "__main__":
 
     # Ensure directory exists for saving figures to
-    # c_dir = os.path.join(os.getcwd(), 'model_sources/migliore_etal_2018/MiglioreEtAl2018PLOSCompBiol2018')
-    res_dir = os.path.join(os.getcwd(), 'results', 'Tuning Calcium Model', 'RXD')
+    path_parts = os.getcwd().split('/')
+    home_i = path_parts.index('ca1_dendritic_experiments')
+    home_path = '/'.join(path_parts[:(home_i + 1)])
 
-    if not os.path.exists(res_dir):
-        os.makedirs(res_dir)
-
-    # os.chdir(c_dir)
-
+    res_dir = os.path.join(home_path, 'results', 'Calibration Results')
     all_figs = []
     all_names = []
+
+    config_name = 'config_mpg141209_A_idA_test_doi'  # 'config_mpg141209_A_idA'
+    spec_name = config_name + '_spec'
+    conf_path = os.path.join(home_path, 'config_files', config_name)
+    spec_path = conf_path + '_spec'
+    conf_path += '.txt'
+    spec_path += '.txt'
+
+    config_obj = conf.load_config(conf_path, spec_path)
 
     ext_to_er_ratio = 1.0
 
@@ -1469,10 +1885,11 @@ if __name__ == "__main__":
 
     run_sim = 'single_ap'
     save_result = False
-    use_file_to_plot = False
-    save_figs = True
+    use_file_to_plot = True
+    save_figs = False
 
-    plot_dasari = False
+    plot_gulledge = False
+    plot_ip3_comp = False
     rxd_bool = True
 
     sim_dict = {'frac_cyt': 0.9,
@@ -1480,12 +1897,12 @@ if __name__ == "__main__":
                 'ca ext val': 2.0,
                 'g_serca': g_serca,
                 'g ext leak': g_ext_leak,
-                'ca_cyt_val': 0.1*0.001,
-                'ca_er_val': 175.0*0.001,
+                'ca_cyt_val': 0.1 * 0.001,
+                'ca_er_val': 175.0 * 0.001,
                 'apical calcium mult': 300.0,
                 'soma calcium mult': 360.0,
-                'soma kca mult': 5.5, # 4.5,
-                'apical kca mult': 5.5, # 4.5,
+                'soma kca mult': 5.5,  # 4.5,
+                'apical kca mult': 5.5,  # 4.5,
                 'soma im mult': 1.0,
                 'axon im mult': 1.0,
                 'ca_diff': 0.03,
@@ -1516,9 +1933,9 @@ if __name__ == "__main__":
                 'ip3 lock': False,
                 'tau_leak_soma': 1.0,
                 'tau_leak_apical': 1.0,
-                'm1 init': 15.87*5.0,
+                'm1 init': 15.87 * 5.0,
                 'g init': 40.0,
-                'plc init': 3.1198*5.0,
+                'plc init': 3.1198 * 5.0,
                 'pip2 init': 3232,  # 3232,
                 'pi4p init': 4540,  # 4540,
                 'pi init': 226975.0,  # 226975
@@ -1539,13 +1956,14 @@ if __name__ == "__main__":
         # Recharge Simulation
         #######################
 
-        recharge_dict = run_recharge_simulation(sim_dict, sim_dur=180000)
+        recharge_dict = run_recharge_simulation(config_obj, sim_dur=180000)
         recharge_figs = plot_recharge(recharge_dict)
 
         t_est = np.arange(0, 180001, 20000)
         v_est = 177.0 * (1.0 - np.exp(-t_est / 59000))
 
-        recharge_figs[1].line(t_est/1000.0, v_est, line_width=3, color='black', line_dash='dashed', legend='target, {} = 59 sec'.format(tau))
+        recharge_figs[1].line(t_est / 1000.0, v_est, line_width=3, color='black', line_dash='dashed',
+                              legend='target, {} = 59 sec'.format(tau))
         recharge_figs[1].legend.location = 'bottom_right'
         all_figs += recharge_figs
         all_names += ['recharge_cytosol', 'recharge_er']
@@ -1559,13 +1977,13 @@ if __name__ == "__main__":
         # Apical Dendrite dF = 22%, decay time constant = 276 msec
         # Soma dF = 9%, decay time constant = 391 msec
 
-        sim_dict['cbd_total'] = 0.045*0.2
-        sim_dict['ogb1_total'] = 0.050
+        config_obj['RXD']['ogb1_total'] = 0.050
+        config_obj['RXD']['cbd_total'] = 0.2 * 0.045
 
         # Stimulate Action Potential with Current Injection
         charge_int = [2000, 2010]
-        r_d = run_current_injection(rxd_bool, param_dict=sim_dict, sim_dur=5200, c_int=charge_int, c_amp=0.5)
-
+        r_d = run_current_injection(rxd_bool, param_dict=config_obj, sim_dur=5200, c_int=charge_int, c_amp=0.5)
+        print('simulation done')
         time_ig = 1000
         reg_figs = plot_current_injection(r_d, rxd_bool, charge_int[0], t_ignore=time_ig)
 
@@ -1593,7 +2011,7 @@ if __name__ == "__main__":
                                [0.6938775510204085, -10.961623779946756], [0.8571428571428577, -10.544587400177456],
                                [1.0612244897959204, -9.479813664596268]])
 
-        fig5a_dend[:, 0] = (fig5a_dend[:, 0] - fig5a_dend[0, 0])*1000 + 700.0
+        fig5a_dend[:, 0] = (fig5a_dend[:, 0] - fig5a_dend[0, 0]) * 1000 + 700.0
         i_dend = np.squeeze(np.where(fig5a_dend[:, 0] < 2000))
         fig5a_dend[:, 1] = fig5a_dend[:, 1] - fig5a_dend[0, 1]
 
@@ -1642,9 +2060,9 @@ if __name__ == "__main__":
                                [1.0046082949308772, -0.0360000000000001], [1.0443502304147483, -0.04400000000000012],
                                [1.095078341013826, -0.03714285714285727]])
 
-        fig5a_soma[:, 0] = (fig5a_soma[:, 0] - fig5a_soma[0, 0])*1000 + 700
+        fig5a_soma[:, 0] = (fig5a_soma[:, 0] - fig5a_soma[0, 0]) * 1000 + 700
         i_soma = np.squeeze(np.where(fig5a_soma[:, 0] < 2000))
-        fig5a_soma[:, 1] = (fig5a_soma[:, 1] - fig5a_soma[0, 1])*100
+        fig5a_soma[:, 1] = (fig5a_soma[:, 1] - fig5a_soma[0, 1]) * 100
 
         i_ig = np.squeeze(np.where(r_d['t'] > time_ig))
         i_max_s = np.argmax(r_d['apic9_dyeca'][i_ig])
@@ -1655,16 +2073,16 @@ if __name__ == "__main__":
 
         # reg_figs[6].line(t_est, est_val_s, line_width=3, color='darkorange', legend='Target-Soma', line_dash='dashed')
         # reg_figs[6].line(t_est, est_val_a, line_width=3, color='red', legend='Target-Apical Trunk', line_dash='dashed')
-        reg_figs[6].line(fig5a_soma[:, 0][i_soma], fig5a_soma[:, 1][i_soma], line_width=3,
-                         color='darkorange', legend='Target-Soma', line_dash='dashed')
-        reg_figs[6].line(fig5a_dend[:, 0][i_dend], fig5a_dend[:, 1][i_dend], line_width=3,
-                         color='red', legend='Target-Apical Trunk', line_dash='dashed')
+        reg_figs[-1].line(fig5a_soma[:, 0][i_soma], fig5a_soma[:, 1][i_soma], line_width=3,
+                          color='darkorange', legend='Target-Soma', line_dash='dashed')
+        reg_figs[-1].line(fig5a_dend[:, 0][i_dend], fig5a_dend[:, 1][i_dend], line_width=3,
+                          color='red', legend='Target-Apical Trunk', line_dash='dashed')
 
         all_figs += reg_figs
         if rxd_bool:
             plot_names = ['one_ap_v_vs_t', 'one_ap_i_ing_vs_t', 'one_ap_cyt_vs_t', 'one_ap_calcium_currents_vs_t',
-                          'one_ap_er_vs_t', 'one_ap_cbd_ca_vs_t', 'one_ap_dF_vs_t', 'one_ap_car_ca_vs_t',
-                          'one_ap_rO_ip3r_vs_t']
+                          'one_ap_er_vs_t', 'one_ap_cbd_ca_vs_t', 'one_ap_car_ca_vs_t',
+                          'one_ap_rO_ip3r_vs_t', 'one_ap_dF_vs_t']
         else:
             plot_names = ['one_ap_v_vs_t', 'one_ap_i_ing_vs_t', 'one_ap_cyt_vs_t', 'one_ap_calcium_currents_vs_t']
         all_names += plot_names
@@ -1678,7 +2096,8 @@ if __name__ == "__main__":
         # Apical Dendrite dF = 100%, decay time constant = 211 msec
         # Soma dF = 22%, decay time constant = 343 msec
 
-        r_d2 = run_current_injection_series(rxd_bool, param_dict=sim_dict, sim_dur=500, pulse_times=[50, 100, 150, 200], pulse_amps=[0.7, 0.7, 0.7, 0.7])
+        r_d2 = run_current_injection_series(rxd_bool, param_dict=config_obj, sim_dur=500,
+                                            pulse_times=[50, 100, 150, 200], pulse_amps=[0.7, 0.7, 0.7, 0.7])
         reg_figs2 = plot_current_injection(r_d2, rxd_bool)
 
         targ_max_s = 22.0  # (%)
@@ -1691,7 +2110,8 @@ if __name__ == "__main__":
         est_val_a = targ_max_a * np.exp(-(t_est - r_d2['t'][i_max_s]) / targ_tau_a)
 
         reg_figs2[6].line(t_est, est_val_s, line_width=3, color='red', legend='target soma', line_dash='dashed')
-        reg_figs2[6].line(t_est, est_val_a, line_width=3, color='darkorange', legend='target apical', line_dash='dashed')
+        reg_figs2[6].line(t_est, est_val_a, line_width=3, color='darkorange', legend='target apical',
+                          line_dash='dashed')
 
         all_figs += reg_figs2
         if rxd_bool:
@@ -1706,23 +2126,22 @@ if __name__ == "__main__":
         # ACh Pulse
         ############
 
-        sim_dur = 5000
-        t_ignore = 0
-        h5_path = os.path.join(res_dir, 'ach_pulse_spikes.h5')
+        sim_dur = 9500
+        t_ignore = 500
+        h5_path = os.path.join(res_dir, 'ach_pulse_spikes_9sec_final_params.h5')
 
-        my_steps = np.arange(0, sim_dur+1, 50)
+        my_steps = np.arange(0, sim_dur + 1, 50)
 
-        c_dict = {'amp': 0.0, # 0.525,
+        c_dict = {'amp': 0.0,
                   'start': 1.0,
                   'dur': sim_dur,
                   }
 
         if not use_file_to_plot:
-            rd_ach = run_ach_pulse(my_steps, sim_dict, pulse_times=[200], pulse_amps=[0.1],
+            rd_ach = run_ach_pulse(my_steps, config_obj, pulse_times=[1500], pulse_amps=[0.1],
                                    pulse_length=50, current_dict=c_dict)
 
             if save_result:
-
                 save_dict = {}
                 # Only save numpy arrays holding time series
                 for k, v in rd_ach.items():
@@ -1735,40 +2154,22 @@ if __name__ == "__main__":
                     h5file.put('ach_pulse', save_df, format='table', data_columns=True)
                 print('Results saved to {}'.format(h5_path))
 
-            ach_figs = plot_ach_pulse(rd_ach, t_is=[0, 1], ach_times=[200, 250], t_ignore=t_ignore)
+            ach_figs = plot_ach_pulse(rd_ach, t_is=[0, 1], ach_times=[1500, 1550], t_ignore=t_ignore)
 
         else:
             with pd.HDFStore(h5_path) as h5file:
-                ton_dict = {'soma_v_dict': {},
-                            'ca_cyt_dict': {},
-                            'ca_er_dict': {},
-                            'soma_im_dict': {},
-                            'soma_isk_dict': {},
-                            'soma_pip2_dict': {},
-                            't': {}}
+                ach_dict = {
+                    'ca_cyt_dict': {},
+                    'ca_er_dict': {},
+                    'soma_im_dict': {},
+                    'soma_isk_dict': {},
+                    'soma_pip2_dict': {},
+                }
 
-                for k in h5file.keys():
-                    if 'soma_v' in k:
-                        ton_dict['soma_v_dict'] = h5file[k]
-                    elif 'soma_im' in k:
-                        ai = int(k.split('_')[-1])
-                        ton_dict['soma_im_dict'][ai] = h5file[k]
-                    elif 'soma_isk' in k:
-                        ai = int(k.split('_')[-1])
-                        ton_dict['soma_isk_dict'][ai] = h5file[k]
-                    elif 'ca_cyt' in k:
-                        ai = int(k.split('_')[-1])
-                        ton_dict['ca_cyt_dict'][ai] = h5file[k]
-                    elif 'ca_er' in k:
-                        ai = int(k.split('_')[-1])
-                        ton_dict['ca_er_dict'][ai] = h5file[k]
-                    elif 't_dict' in k:
-                        ai = int(k.split('_')[-1])
-                        ton_dict['t'][ai] = h5file[k]
+                for k in h5file['ach_pulse'].keys():
+                    ach_dict[k] = h5file['ach_pulse'][k].to_numpy()
 
-                rd_ach = h5file['ach_pulse']
-
-                ach_figs = plot_ach_pulse(rd_ach, t_is=[0, 1], ach_times=[2200, 2250], t_ignore=t_ignore)
+                ach_figs = plot_ach_pulse(ach_dict, t_is=[0, 1], ach_times=[1500, 1550], t_ignore=t_ignore)
 
         ach_figs[-1].legend.visible = False
 
@@ -1805,7 +2206,7 @@ if __name__ == "__main__":
                   }
 
         if not use_file_to_plot:
-            rd_ach = run_ach_pulse(my_steps, sim_dict, pulse_times=[2200, 10200, 18200], pulse_amps=[0.1, 0.1, 0.1],
+            rd_ach = run_ach_pulse(my_steps, config_obj, pulse_times=[2200, 10200, 18200], pulse_amps=[0.1, 0.1, 0.1],
                                    pulse_length=50, current_dict=c_dict)
 
             if save_result:
@@ -1822,21 +2223,32 @@ if __name__ == "__main__":
                     h5file.put('ach_pulse', save_df, format='table', data_columns=True)
                 print('Results saved to {}'.format(h5_path))
 
-            ach_figs = plot_ach_pulse(rd_ach, t_is=[0, 1], ach_times=[2200, 2250, 10200, 10250, 18200, 18250], t_ignore=200)
+            ach_figs = plot_ach_pulse(rd_ach, t_is=[0, 1], ach_times=[2200, 2250, 10200, 10250, 18200, 18250],
+                                      t_ignore=200)
 
         else:
             with pd.HDFStore(h5_path) as h5file:
 
                 rd_ach = h5file['ach_pulse']
 
-                ach_figs = plot_ach_pulse(rd_ach, t_is=[0, 1], ach_times=[2200, 2250, 10200, 10250, 18200, 18250], t_ignore=200)
+                ach_figs = plot_ach_pulse(rd_ach, t_is=[0, 1], ach_times=[2200, 2250, 10200, 10250, 18200, 18250],
+                                          t_ignore=200)
 
         ach_figs[-1].legend.visible = False
 
-        ach_names = ['ach_refill_test_cyt_vs_t', 'ach_refill_test_er_vs_t', 'ach_refill_test_ach_vs_t', 'ach_refill_test_rl_vs_t',
-                     'ach_refill_test_active_plc_vs_t', 'ach_refill_test_pip2_vs_t', 'ach_refill_test_pi_flux_vs_t', 'ach_refill_test_ip3_vs_t',
-                     'ach_refill_test_open_ip3r_vs_t', 'ach_refill_test_ip3_breakdown_vs_t', 'ach_refill_test_perc_im_vs_t',
+        ach_names = ['ach_refill_test_cyt_vs_t', 'ach_refill_test_er_vs_t', 'ach_refill_test_ach_vs_t',
+                     'ach_refill_test_rl_vs_t',
+                     'ach_refill_test_active_plc_vs_t', 'ach_refill_test_pip2_vs_t', 'ach_refill_test_pi_flux_vs_t',
+                     'ach_refill_test_ip3_vs_t',
+                     'ach_refill_test_open_ip3r_vs_t', 'ach_refill_test_ip3_breakdown_vs_t',
+                     'ach_refill_test_perc_im_vs_t',
                      'ach_refill_test_ik_vs_t', 'ach_refill_test_v_vs_t']
+
+        # if len(ach_figs) > len(ach_names):
+        #     add_dasari_isr_data(ach_figs[-1])
+        #
+        #     ach_names.append('ach_pulse_ifr_vs_t')
+        #     ach_names.append('ach_pulse_spike_accel_vs_t')
 
         ach_names_dose = [a_name + '_refill_100uM_50msec_0p125Hz_ach_spikes' for a_name in ach_names]
 
@@ -1860,7 +2272,7 @@ if __name__ == "__main__":
                   }
 
         if not use_file_to_plot:
-            rd_ach = run_ach_pulse(my_steps, sim_dict, pulse_times=[2200, 10200, 18200], pulse_amps=[0.1, 0.1, 0.1],
+            rd_ach = run_ach_pulse(my_steps, config_obj, pulse_times=[2200, 10200, 18200], pulse_amps=[0.1, 0.1, 0.1],
                                    pulse_length=50, current_dict=c_dict)
 
             if save_result:
@@ -1877,60 +2289,91 @@ if __name__ == "__main__":
                     h5file.put('ach_pulse', save_df, format='table', data_columns=True)
                 print('Results saved to {}'.format(h5_path))
 
-            ach_figs = plot_ach_pulse(rd_ach, t_is=[0, 1], ach_times=[2200, 2250, 10200, 10250, 18200, 18250], t_ignore=200)
+            ach_figs = plot_ach_pulse(rd_ach, t_is=[0, 1], ach_times=[2200, 2250, 10200, 10250, 18200, 18250],
+                                      t_ignore=200)
 
         else:
             with pd.HDFStore(h5_path) as h5file:
 
                 rd_ach = h5file['ach_pulse']
 
-                ach_figs = plot_ach_pulse(rd_ach, t_is=[0, 1], ach_times=[2200, 2250, 10200, 10250, 18200, 18250], t_ignore=200)
+                ach_figs = plot_ach_pulse(rd_ach, t_is=[0, 1], ach_times=[2200, 2250, 10200, 10250, 18200, 18250],
+                                          t_ignore=200)
 
         ach_figs[-1].legend.visible = False
 
-        ach_names = ['ach_refill_test__cyt_vs_t', 'ach_refill_test_er_vs_t', 'ach_refill_test_ach_vs_t', 'ach_refill_test_rl_vs_t',
-                     'ach_refill_test_active_plc_vs_t', 'ach_refill_test_pip2_vs_t', 'ach_refill_test_pi_flux_vs_t', 'ach_refill_test_ip3_vs_t',
-                     'ach_refill_test_open_ip3r_vs_t', 'ach_refill_test_ip3_breakdown_vs_t', 'ach_refill_test_perc_im_vs_t',
+        ach_names = ['ach_refill_test__cyt_vs_t', 'ach_refill_test_er_vs_t', 'ach_refill_test_ach_vs_t',
+                     'ach_refill_test_rl_vs_t',
+                     'ach_refill_test_active_plc_vs_t', 'ach_refill_test_pip2_vs_t', 'ach_refill_test_pi_flux_vs_t',
+                     'ach_refill_test_ip3_vs_t',
+                     'ach_refill_test_open_ip3r_vs_t', 'ach_refill_test_ip3_breakdown_vs_t',
+                     'ach_refill_test_perc_im_vs_t',
                      'ach_refill_test_ik_vs_t', 'ach_refill_test_v_vs_t']
+
+        # if len(ach_figs) > len(ach_names):
+        #     add_dasari_isr_data(ach_figs[-1])
+        #
+        #     ach_names.append('ach_pulse_ifr_vs_t')
+        #     ach_names.append('ach_pulse_spike_accel_vs_t')
 
         ach_names_dose = [a_name + '_refill_100uM_50msec_0p125Hz_ach_resting' for a_name in ach_names]
 
         all_figs += ach_figs
         all_names += ach_names_dose
-    
-    if plot_dasari:
+
+    if plot_gulledge:
         #################################
         # Plot Dasari and Gulledge Data
         #################################
-        ifr_fig = bplt.figure(title='Instantaneous Firing Rate vs Time')
-        add_dasari_isr_data(ifr_fig)
+        exp_path = os.path.join(home_path, 'gulledge_lab_recordings/gulledge_and_kawaguchi_2007')
+        exp_h5file = os.path.join(os.path.join(exp_path, 'gulledge_and_kawaguchi_2007_accel_data.h5'))
 
-        ifr_fig.xaxis.axis_label = 'time (msec)'
-        ifr_fig.yaxis.axis_label = 'IFR (Hz)'
+        exp_trace = 'Cell 22 trial 2 Rat'
 
-        all_figs += [ifr_fig]
-        all_figs += plot_dasari_and_gulledge_data()
-        all_names += ['dasari_and_gulledge_ifr', 'dasari_and_gulledge_1a2_rmp', 'dasari_and_gulledge_2a_rmp']
+        # mod_h5file = os.path.join(res_dir, 'ach_pulse_spikes_8sec_2.h5')
+        mod_h5file = os.path.join(res_dir, 'ach_pulse_spikes_9sec_faster_pip2_1.h5')
+
+        exp_fig, mod_fig, ifr_comp_fig = plot_model_vs_gulledge(mod_h5file, exp_h5file, exp_trace, exp_min_time=7.0,
+                                                                model_t_ignore=500.0)
+
+        all_figs += [exp_fig, mod_fig, ifr_comp_fig]
+        all_names += ['gulledge_v', 'experiment_v', 'isr_comparison']
+
+    if plot_ip3_comp:
+        orig_h5file = os.path.join(res_dir, 'ach_pulse_no_spikes_9sec_original.h5')
+        plc_h5file = os.path.join(res_dir, 'ach_pulse_no_spikes_9sec_fast_plc_activation.h5')
+        fast_h5file = os.path.join(res_dir, 'ach_pulse_no_spikes_9sec_fast_hydrolysis.h5')
+        final_h5file = os.path.join(res_dir, 'ach_pulse_no_spikes_9sec_final_params.h5')
+
+        plc_fig, ip3_fig, pip2_fig = plot_ip3_and_pip2_different_parameters(orig_h5file, plc_h5file, fast_h5file,
+                                                                            final_h5file,
+                                                                            t_ig_orig=500.0, t_ig_plc=500.0,
+                                                                            t_ig_fast=500.0,
+                                                                            t_ig_final=500.0)
+
+        all_figs += [plc_fig, ip3_fig, pip2_fig]
+        all_names += ['gulledge_v', 'experiment_v', 'isr_comparison']
 
     for fig in all_figs:
         plt_res.configure_plot(fig)
 
     # plt.show()
-    bkio.show(blay.column(all_figs))
 
     if save_figs:
 
-        # driver_path = r'/usr/local/bin/geckodriver'
-        # my_opts = webdriver.firefox.options.Options()
-        # # my_opts.add_argument('start-maximized')
-        # # my_opts.add_argument('disable-infobars')
-        # my_opts.add_argument('--disable-extensions')
-        # my_opts.add_argument('window-size=1200,1000')
-        # my_opts.headless = True
-        #
-        # my_driver = webdriver.Firefox(options=my_opts, executable_path=driver_path)
+        driver_path = r'/usr/local/bin/geckodriver'
+        my_opts = webdriver.firefox.options.Options()
+        # my_opts.add_argument('start-maximized')
+        # my_opts.add_argument('disable-infobars')
+        my_opts.add_argument('--disable-extensions')
+        my_opts.add_argument('window-size=1200,1000')
+        my_opts.headless = True
+
+        my_driver = webdriver.Firefox(options=my_opts, executable_path=driver_path)
 
         for fig, name in zip(all_figs, all_names):
             fig_path = os.path.join(res_dir, '{}.png'.format(name))
-            bkio.export_png(fig, filename=fig_path)  # , webdriver=my_driver)
+            bkio.export_png(fig, filename=fig_path, webdriver=my_driver)
 
+    else:
+        bkio.show(blay.column(all_figs))
